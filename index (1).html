@@ -1,0 +1,2622 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AcoustiCity Almaty — Балалардың когнитивті денсаулығына арналған акустикалық ГАЖ</title>
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Leaflet.js -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- Қаріптер -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        cyber: { bg:'#05070d', panel:'#0b1020', edge:'#1b2440', cyan:'#22d3ee', magenta:'#e879f9', lime:'#a3e635' }
+      }
+    }
+  }
+}
+</script>
+
+<style>
+  :root{
+    --bg:#05070d; --panel:#0b1020; --edge:#1b2440; --cyan:#22d3ee; --mag:#e879f9;
+    --green:#22c55e; --yellow:#facc15; --red:#ef4444;
+  }
+  html{scroll-behavior:smooth}
+  body{
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(34,211,238,.10), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(232,121,249,.10), transparent 60%),
+      linear-gradient(180deg,#05070d 0%,#070a14 100%);
+    color:#e2e8f0; font-family:Inter,system-ui,sans-serif; min-height:100vh;
+  }
+  body::before{ /* киберторлы фон */
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(rgba(34,211,238,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34,211,238,.04) 1px, transparent 1px);
+    background-size:40px 40px;
+  }
+  .wrap{position:relative; z-index:1}
+  .panel{
+    background:linear-gradient(180deg, rgba(15,22,44,.88), rgba(8,12,26,.92));
+    border:1px solid var(--edge); border-radius:18px;
+    box-shadow:0 0 0 1px rgba(34,211,238,.04), 0 20px 50px -20px rgba(0,0,0,.8);
+    backdrop-filter:blur(6px);
+  }
+  .panel-title{ letter-spacing:.02em }
+  .glow-text{ text-shadow:0 0 18px rgba(34,211,238,.55) }
+  .tag{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--cyan) }
+  .btn{
+    display:inline-flex; align-items:center; gap:.5rem; justify-content:center;
+    padding:.6rem 1rem; border-radius:12px; font-weight:600; font-size:.875rem;
+    border:1px solid #23305a; background:#0e1630; color:#cbd5e1; transition:all .2s; cursor:pointer;
+  }
+  .btn:hover{ border-color:var(--cyan); color:#fff; box-shadow:0 0 18px -4px rgba(34,211,238,.6) }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; box-shadow:none; border-color:#23305a }
+  .btn.active{ background:linear-gradient(90deg,rgba(34,211,238,.25),rgba(232,121,249,.2)); border-color:var(--cyan); color:#fff }
+  .btn-primary{ background:linear-gradient(90deg,#0891b2,#a21caf); border-color:transparent; color:#fff }
+  .btn-primary:hover{ filter:brightness(1.15) }
+  .btn-danger{ background:#3b0d14; border-color:#7f1d1d; color:#fecaca }
+  .kpi{ font-family:'JetBrains Mono',monospace }
+  .mono{ font-family:'JetBrains Mono',monospace }
+
+  /* Жүгірткілер */
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:6px;
+    background:linear-gradient(90deg,#0891b2,#a21caf); outline:none; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:#fff; border:3px solid var(--cyan); box-shadow:0 0 12px var(--cyan); cursor:pointer }
+  input[type=range]::-moz-range-thumb{ width:16px; height:16px; border-radius:50%; background:#fff; border:3px solid var(--cyan); cursor:pointer }
+  select{ background:#0e1630; border:1px solid #23305a; color:#e2e8f0; border-radius:10px; padding:.5rem .75rem; width:100% }
+
+  /* Ауыстырғыш (toggle) */
+  .switch{ position:relative; width:46px; height:24px; flex:none }
+  .switch input{ opacity:0; width:0; height:0 }
+  .slider{ position:absolute; inset:0; background:#1e293b; border-radius:24px; transition:.25s; border:1px solid #334155 }
+  .slider::before{ content:""; position:absolute; width:18px; height:18px; left:2px; top:2px; background:#94a3b8; border-radius:50%; transition:.25s }
+  .switch input:checked + .slider{ background:linear-gradient(90deg,#0891b2,#a21caf); border-color:transparent }
+  .switch input:checked + .slider::before{ transform:translateX(22px); background:#fff }
+
+  /* Карта */
+  #map{ height:580px; border-radius:14px; border:1px solid var(--edge); background:#0a0f1d }
+  .leaflet-container{ font-family:Inter,sans-serif }
+  .leaflet-popup-content-wrapper,.leaflet-popup-tip{
+    background:#0b1222; color:#e2e8f0; border:1px solid #23305a; box-shadow:0 10px 40px rgba(0,0,0,.6)
+  }
+  .leaflet-popup-content{ margin:14px 16px; min-width:250px }
+  .leaflet-container a.leaflet-popup-close-button{ color:#94a3b8 }
+  .leaflet-control-attribution{ background:rgba(5,7,13,.7)!important; color:#64748b!important }
+  .leaflet-control-attribution a{ color:#22d3ee!important }
+  .leaflet-bar a{ background:#0e1630; color:#cbd5e1; border-color:#23305a }
+  .leaflet-bar a:hover{ background:#16213f; color:#fff }
+  .leaflet-control-layers{ background:#0b1222!important; color:#e2e8f0; border:1px solid #23305a!important; border-radius:12px!important; font-size:12px }
+  .leaflet-control-scale-line{ background:rgba(255,255,255,.8); color:#0f172a }
+  .own-tip{ background:linear-gradient(90deg,#0891b2,#a21caf)!important; color:#fff!important; border:none!important; font-weight:800; font-size:12px; border-radius:8px!important; box-shadow:0 0 16px rgba(34,211,238,.7)!important }
+  .own-tip::before{ display:none }
+  .bd-cell{ aspect-ratio:1/1; display:grid; place-items:center; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:clamp(11px,1.5vw,17px);
+    background:#0a1124; border:1px solid #1b2440; border-radius:6px; color:#e2e8f0; cursor:pointer; user-select:none; transition:background .1s }
+  .bd-cell:hover{ border-color:#22d3ee }
+  .bd-cell.sel{ background:rgba(34,211,238,.28); border-color:#22d3ee; color:#fff }
+  .bd-cell.hit{ background:rgba(34,197,94,.35); border-color:#22c55e }
+  .bd-cell.fa{ background:rgba(239,68,68,.4); border-color:#ef4444 }
+  .bd-cell.om{ background:transparent; border:2px dashed #facc15; color:#fde047 }
+  .bd-cell.out{ opacity:.35 }
+  #bdGrid.blur{ filter:blur(7px); pointer-events:none }
+  .cmp-table th,.cmp-table td{ padding:10px 12px; border-bottom:1px solid #1b2440; vertical-align:top }
+  .cmp-table thead th{ color:#94a3b8; font-weight:600; font-size:12px; text-align:left; background:#0a1124 }
+  .cmp-table tr.ours td{ background:linear-gradient(90deg,rgba(34,211,238,.10),rgba(232,121,249,.06)) }
+  .yes{ color:#4ade80; font-weight:700 } .no{ color:#f87171; font-weight:700 } .part{ color:#fde047; font-weight:700 }
+  .map-crosshair{ cursor:crosshair!important }
+
+  /* Пульсациялы маркерлер */
+  .pulse-marker{ position:relative; width:22px; height:22px }
+  .pulse-marker .core{ position:absolute; inset:5px; border-radius:50%; border:2px solid #fff; z-index:2 }
+  .pulse-marker .ring{ position:absolute; inset:0; border-radius:50%; animation:pulse 1.8s ease-out infinite; z-index:1 }
+  .pulse-marker .ring.r2{ animation-delay:.9s }
+  @keyframes pulse{ 0%{transform:scale(.6); opacity:.9} 100%{transform:scale(2.8); opacity:0} }
+  .pm-green .core{ background:var(--green); box-shadow:0 0 12px var(--green) } .pm-green .ring{ background:rgba(34,197,94,.55) }
+  .pm-yellow .core{ background:var(--yellow); box-shadow:0 0 12px var(--yellow) } .pm-yellow .ring{ background:rgba(250,204,21,.55) }
+  .pm-red .core{ background:var(--red); box-shadow:0 0 14px var(--red) } .pm-red .ring{ background:rgba(239,68,68,.6) }
+  .pm-crowd .core{ background:var(--mag); box-shadow:0 0 14px var(--mag); border-radius:4px; transform:rotate(45deg) }
+  .pm-crowd .ring{ background:rgba(232,121,249,.55) }
+  .pm-predict .core{ background:#22d3ee; box-shadow:0 0 14px #22d3ee }
+  .pm-predict .ring{ background:rgba(34,211,238,.55) }
+
+  .badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:.04em }
+  .b-green{ background:rgba(34,197,94,.15); color:#4ade80; border:1px solid rgba(34,197,94,.4) }
+  .b-yellow{ background:rgba(250,204,21,.12); color:#fde047; border:1px solid rgba(250,204,21,.4) }
+  .b-red{ background:rgba(239,68,68,.15); color:#f87171; border:1px solid rgba(239,68,68,.45) }
+
+  canvas.dsp{ width:100%; display:block; border-radius:12px; background:#03050b; border:1px solid var(--edge) }
+  .formula{ font-family:'JetBrains Mono',monospace; background:#050914; border:1px dashed #23305a; border-radius:12px; padding:14px; color:#a5f3fc }
+  .att-bar{ height:10px; border-radius:6px; transition:width .35s ease }
+  .meter-ring{ filter:drop-shadow(0 0 12px rgba(34,211,238,.45)) }
+  .scan{ position:relative; overflow:hidden }
+  .scan::after{ content:""; position:absolute; left:0; right:0; height:2px; top:-2px;
+    background:linear-gradient(90deg,transparent,rgba(34,211,238,.8),transparent); animation:scan 4s linear infinite }
+  @keyframes scan{ to{ top:100% } }
+  .nav-link{ font-size:13px; color:#94a3b8; padding:.4rem .7rem; border-radius:8px }
+  .nav-link:hover{ color:#fff; background:rgba(34,211,238,.1) }
+  .toast{ position:fixed; left:20px; bottom:20px; z-index:9999; max-width:380px; padding:12px 16px; border-radius:12px;
+    background:#0b1222; border:1px solid var(--cyan); color:#e2e8f0; box-shadow:0 0 30px -6px rgba(34,211,238,.6);
+    transform:translateY(120%); opacity:0; transition:all .35s ease }
+  .toast.show{ transform:translateY(0); opacity:1 }
+  .chk{ display:flex; gap:.75rem; align-items:flex-start; padding:.85rem; border:1px solid #1e2a4d; border-radius:12px; background:#0a1124; cursor:pointer; transition:.2s }
+  .chk:hover{ border-color:#2dd4bf }
+  .chk input{ margin-top:3px; accent-color:#22d3ee; width:18px; height:18px }
+  ::-webkit-scrollbar{ width:10px } ::-webkit-scrollbar-track{ background:#05070d } ::-webkit-scrollbar-thumb{ background:#1b2440; border-radius:10px }
+  /* ============ 6-МОДУЛЬ: ЭКО-АССИСТЕНТ (AI CHAT WIDGET) ============ */
+  #ecoFab{ position:fixed; right:22px; bottom:22px; z-index:10001; width:64px; height:64px; border-radius:20px; border:none; cursor:pointer;
+    background:linear-gradient(135deg,#0891b2,#a21caf); box-shadow:0 0 0 1px rgba(255,255,255,.08),0 0 34px -4px rgba(34,211,238,.85);
+    display:grid; place-items:center; transition:transform .25s }
+  #ecoFab:hover{ transform:translateY(-3px) scale(1.04) }
+  #ecoFab .fab-ping{ position:absolute; inset:-4px; border-radius:24px; border:2px solid rgba(34,211,238,.6); animation:fabPing 2.4s ease-out infinite }
+  @keyframes fabPing{ 0%{transform:scale(.9);opacity:.9} 100%{transform:scale(1.35);opacity:0} }
+  #ecoFab .fab-dot{ position:absolute; top:6px; right:6px; width:12px; height:12px; border-radius:50%; background:#a3e635; box-shadow:0 0 10px #a3e635; border:2px solid #0b1020 }
+  #ecoChat{ position:fixed; right:22px; bottom:100px; z-index:10000; width:min(420px,calc(100vw - 28px)); height:min(640px,calc(100vh - 130px));
+    display:flex; flex-direction:column; border-radius:22px; overflow:hidden;
+    background:linear-gradient(180deg,rgba(13,20,42,.97),rgba(6,9,20,.98)); border:1px solid #23305a;
+    box-shadow:0 0 0 1px rgba(34,211,238,.08),0 30px 80px -20px rgba(0,0,0,.9),0 0 60px -25px rgba(34,211,238,.6);
+    transform-origin:bottom right; transform:scale(.6) translateY(30px); opacity:0; pointer-events:none; transition:all .28s cubic-bezier(.2,.9,.3,1.2) }
+  #ecoChat.open{ transform:none; opacity:1; pointer-events:auto }
+  .eco-head{ padding:14px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #1b2440;
+    background:linear-gradient(90deg,rgba(34,211,238,.12),rgba(232,121,249,.10)) }
+  .eco-avatar{ width:42px; height:42px; border-radius:14px; display:grid; place-items:center; background:linear-gradient(135deg,#0e7490,#86198f); box-shadow:0 0 18px -4px #22d3ee; flex:none }
+  .eco-iconbtn{ width:34px; height:34px; border-radius:10px; display:grid; place-items:center; border:1px solid #23305a; background:#0e1630; color:#94a3b8; cursor:pointer; transition:.2s }
+  .eco-iconbtn:hover{ color:#fff; border-color:#22d3ee }
+  #ecoMsgs{ flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; scroll-behavior:smooth }
+  .eco-msg{ max-width:88%; padding:10px 13px; border-radius:16px; font-size:13.5px; line-height:1.55; word-wrap:break-word; animation:msgIn .25s ease }
+  @keyframes msgIn{ from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
+  .eco-bot{ align-self:flex-start; background:#0d1730; border:1px solid #1e2a4d; border-bottom-left-radius:4px; color:#e2e8f0 }
+  .eco-user{ align-self:flex-end; background:linear-gradient(135deg,#0e7490,#86198f); color:#fff; border-bottom-right-radius:4px }
+  .eco-bot b{ color:#67e8f9 } .eco-bot .hl{ color:#fde047; font-weight:700 } .eco-bot .ok{ color:#4ade80; font-weight:700 } .eco-bot .bad{ color:#f87171; font-weight:700 }
+  .eco-bot ul{ margin:4px 0 0 0; padding-left:16px; list-style:disc } .eco-bot li{ margin:2px 0 }
+  .eco-bot code{ font-family:'JetBrains Mono',monospace; font-size:12px; background:#050914; border:1px solid #1e2a4d; padding:1px 5px; border-radius:6px; color:#a5f3fc }
+  .eco-meta{ font-size:10px; color:#64748b; margin-top:5px; font-family:'JetBrains Mono',monospace; display:flex; gap:6px; align-items:center }
+  .eco-src{ padding:1px 6px; border-radius:6px; border:1px solid #23305a; color:#94a3b8 }
+  .eco-actions{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px }
+  .eco-act{ font-size:11.5px; padding:5px 9px; border-radius:9px; border:1px solid #155e75; background:rgba(34,211,238,.08); color:#a5f3fc; cursor:pointer }
+  .eco-act:hover{ background:rgba(34,211,238,.2); color:#fff }
+  .eco-typing{ align-self:flex-start; display:flex; gap:5px; padding:12px 14px; background:#0d1730; border:1px solid #1e2a4d; border-radius:16px; border-bottom-left-radius:4px }
+  .eco-typing span{ width:7px; height:7px; border-radius:50%; background:#22d3ee; animation:typing 1.2s infinite ease-in-out }
+  .eco-typing span:nth-child(2){ animation-delay:.15s } .eco-typing span:nth-child(3){ animation-delay:.3s }
+  @keyframes typing{ 0%,60%,100%{ transform:translateY(0); opacity:.4 } 30%{ transform:translateY(-6px); opacity:1 } }
+  #ecoChips{ display:flex; gap:6px; overflow-x:auto; padding:8px 12px; border-top:1px solid #131c36; scrollbar-width:none }
+  #ecoChips::-webkit-scrollbar{ display:none }
+  .eco-chip{ flex:none; font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid #23305a; background:#0a1124; color:#cbd5e1; cursor:pointer; white-space:nowrap }
+  .eco-chip:hover{ border-color:#e879f9; color:#fff }
+  .eco-input{ display:flex; gap:8px; padding:12px; border-top:1px solid #1b2440; background:#070b18 }
+  .eco-input textarea{ flex:1; resize:none; height:44px; max-height:110px; background:#0b1222; border:1px solid #23305a; border-radius:12px; color:#e2e8f0; padding:11px 12px; font-size:13.5px; outline:none; font-family:Inter }
+  .eco-input textarea:focus{ border-color:#22d3ee; box-shadow:0 0 0 3px rgba(34,211,238,.15) }
+  .eco-send{ width:44px; height:44px; border-radius:12px; border:none; background:linear-gradient(135deg,#0891b2,#a21caf); color:#fff; cursor:pointer; display:grid; place-items:center }
+  .eco-send:disabled{ opacity:.4 }
+  #ecoSettings{ display:none; padding:14px 16px; border-top:1px solid #1b2440; background:#060a16; font-size:12.5px; max-height:45vh; overflow-y:auto }
+  #ecoSettings.show{ display:block }
+  #ecoSettings input, #ecoSettings select{ width:100%; background:#0b1222; border:1px solid #23305a; border-radius:9px; color:#e2e8f0; padding:7px 9px; margin-top:4px; font-size:12.5px }
+  .eco-sys{ display:block; width:100%; text-align:center; font-size:11px; color:#64748b; padding:6px 0 8px; background:#070b18; border:none; cursor:pointer }
+  .eco-sys:hover{ color:#22d3ee }
+  .mode-pill{ font-size:10px; font-family:'JetBrains Mono',monospace; padding:2px 7px; border-radius:999px; letter-spacing:.06em }
+  .mode-local{ background:rgba(163,230,53,.12); color:#bef264; border:1px solid rgba(163,230,53,.4) }
+  .mode-ai{ background:rgba(232,121,249,.12); color:#f0abfc; border:1px solid rgba(232,121,249,.45) }
+  @media (max-width:520px){ #ecoChat{ right:14px; bottom:92px } #ecoFab{ right:14px; bottom:14px } }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+<!-- ======================= ТАҚЫРЫП ======================= -->
+<header class="sticky top-0 z-[1000] border-b border-[#1b2440] bg-[#05070d]/85 backdrop-blur">
+  <div class="max-w-[1500px] mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-fuchsia-600 grid place-items-center shadow-[0_0_25px_-4px_rgba(34,211,238,.8)]">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M2 12h3l2-6 4 12 3-9 2 3h6"/></svg>
+      </div>
+      <div>
+        <div class="font-extrabold tracking-tight text-lg leading-none">AcoustiCity <span class="text-cyan-400">Almaty</span></div>
+        <div class="text-[11px] text-slate-400 mono">GIS · DSP · CREATIVE INDUSTRY · v1.0</div>
+      </div>
+    </div>
+    <nav class="flex gap-1 flex-wrap ml-auto">
+      <a class="nav-link" href="#m1">01 · ГАЖ-карта</a>
+      <a class="nav-link" href="#m2">02 · FFT-шумомер</a>
+      <a class="nav-link" href="#m3">03 · ISO 9613-2</a>
+      <a class="nav-link" href="#m4">04 · Интервенция</a>
+      <a class="nav-link" href="#m5">05 · Аналитика</a>
+      <a class="nav-link" href="#" id="navEco">06 · Сарапшы-кеңесші</a>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-[1500px] mx-auto px-4 py-8 space-y-10">
+
+<!-- ======================= HERO ======================= -->
+<section class="panel p-6 md:p-8 scan">
+  <div class="tag mb-3">«Дарын» РҒПО · Информатика секциясы · Ғылыми жоба</div>
+  <h1 class="text-2xl md:text-4xl font-extrabold leading-tight glow-text">
+    Балалардың когнитивті денсаулығын қорғау мақсатында қалалық ортадағы шудың таралуын предиктивті модельдеуге және акустикалық мониторингке арналған интерактивті геоақпараттық жүйе
+  </h1>
+  <p class="mt-4 text-slate-300 max-w-4xl">
+    Жүйе үш ғылыми бағытты біріктіреді: <b class="text-cyan-300">геоақпараттық жүйелер (ГАЖ)</b> — шудың кеңістіктік таралуын талдау;
+    <b class="text-fuchsia-300">цифрлық сигналдарды өңдеу (DSP)</b> — Фурье жылдам түрлендіруі және A-түзету арқылы нақты уақыттағы өлшеу;
+    <b class="text-lime-300">креативті индустрия</b> — урбанистикалық және биоакустикалық шешімдерді симуляциялау. Нысан: Алматы қаласы (43.238949° с.е., 76.889709° ш.б.).
+  </p>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-6">
+    <div class="panel p-4"><div class="text-xs text-slate-400">Бақылау нүктелері</div><div id="kpiPoints" class="kpi text-2xl font-bold text-cyan-300">31</div></div>
+    <div class="panel p-4"><div class="text-xs text-slate-400">Орташа деңгей</div><div id="kpiAvg" class="kpi text-2xl font-bold">— дБА</div></div>
+    <div class="panel p-4"><div class="text-xs text-slate-400">Қауіпті (&gt;70 дБ)</div><div id="kpiRed" class="kpi text-2xl font-bold text-red-400">—</div></div>
+    <div class="panel p-4"><div class="text-xs text-slate-400">Нормадан асқан балалар мекемелері</div><div id="kpiKids" class="kpi text-2xl font-bold text-yellow-300">—</div></div>
+    <div class="panel p-4"><div class="text-xs text-slate-400">Краудсенсинг өлшемдері</div><div id="kpiCrowd" class="kpi text-2xl font-bold text-fuchsia-300">0</div></div>
+  </div>
+</section>
+
+<!-- ======================= 1-МОДУЛЬ: ГАЖ ======================= -->
+<section id="m1" class="panel p-6">
+  <div class="flex items-start justify-between flex-wrap gap-4 mb-4">
+    <div>
+      <div class="tag">Модуль 01 · Leaflet.js · Кеңістіктік талдау</div>
+      <h2 class="panel-title text-2xl font-bold mt-1">Интерактивті ГАЖ-карта және шудың кеңістіктік таралуы</h2>
+    </div>
+    <div class="flex gap-2 flex-wrap">
+      <button id="btnHeat" class="btn">◉ Жылулық карта (Акустикалық радиус)</button>
+      <button id="btnRisk" class="btn">⬡ Балалар мекемелерінің қауіп аймақтары</button>
+      <button id="btnRoads" class="btn active">≡ Магистральдар</button>
+      <button id="btnPredict" class="btn btn-primary">⌖ Нүктені басып есептеу (Click &amp; Predict)</button>
+    </div>
+  </div>
+
+  <div class="grid lg:grid-cols-[1fr_360px] gap-5">
+    <div class="relative">
+      <div id="map"></div>
+      <div id="predictHint" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-[500] px-4 py-2 rounded-xl bg-cyan-500/20 border border-cyan-400 text-cyan-100 text-sm backdrop-blur">
+        Болжау режимі қосулы: картаның кез келген жерін басыңыз
+      </div>
+      <div class="absolute bottom-4 left-4 z-[500] panel px-4 py-3 text-xs space-y-1.5">
+        <div class="font-semibold text-slate-200 mb-1">Шартты белгілер</div>
+        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></span> &lt; 55 дБА — қауіпсіз</div>
+        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-yellow-400 shadow-[0_0_8px_#facc15]"></span> 55–70 дБА — орташа қауіп</div>
+        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]"></span> &gt; 70 дБА — жүйке жүйесіне қауіпті</div>
+        <div class="flex items-center gap-2"><span class="w-3 h-3 rotate-45 bg-fuchsia-400"></span> Краудсенсинг өлшемі</div>
+        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-cyan-400"></span> Болжамды нүкте</div>
+      </div>
+    </div>
+
+    <aside class="space-y-4">
+      <div class="panel p-4">
+        <div class="tag mb-2">Click &amp; Predict нәтижесі</div>
+        <div id="predictOut" class="text-sm text-slate-400">
+          Болжау режимін қосып, картаны басыңыз. Алгоритм ең жақын магистральға дейінгі перпендикуляр қашықтықты есептеп, барлық жолдардың үлесін энергетикалық қосындылау арқылы болжамды деңгейді анықтайды.
+        </div>
+      </div>
+      <div class="panel p-4 text-sm">
+        <div class="tag mb-2">Болжау алгоритмі</div>
+        <div class="formula text-[12px] leading-relaxed">
+          L<sub>i</sub>(d) = L<sub>0</sub>(Q<sub>i</sub>) − 10·lg(d/10) − α·d<br>
+          L<sub>0</sub>(Q) = 10·lg(Q) + 42<br>
+          L<sub>Σ</sub> = 10·lg( 10<sup>L<sub>фон</sub>/10</sup> + Σ 10<sup>L<sub>i</sub>/10</sup> )
+        </div>
+        <p class="text-slate-400 mt-2 text-xs">d — нүктеден жол сегментіне дейінгі ең қысқа қашықтық (м), Q — көлік ағыны (көлік/сағ), α = 3,7 дБ/км (1 кГц), L<sub>фон</sub> = 42 дБА — қалалық фон.</p>
+      </div>
+      <div class="panel p-4 max-h-[250px] overflow-auto">
+        <div class="tag mb-2">Нысандар тізімі</div>
+        <ul id="pointList" class="text-sm space-y-1"></ul>
+      </div>
+    </aside>
+  </div>
+  <p class="text-xs text-slate-500 mt-3">Картадағы нүктелер — авторлардың AcoustiCity веб-шумомерімен (2-модуль) жүргізген далалық өлшемдері, L<sub>Aeq</sub>, Алматы қ., 2026 ж. қараша. Әр нүктенің терезесінде өлшеу уақыты, L<sub>Amax</sub>, басым жиілік және калибрлеу ығысуы көрсетілген. Магистраль сызықтары мен «Click &amp; Predict» режимі — ISO 9613-2 негізіндегі болжау құралы (өлшем емес).</p>
+  <div class="panel p-4 mt-4">
+    <div class="flex items-center justify-between flex-wrap gap-3">
+      <div>
+        <div class="tag">Деректер базасы · localStorage автосақтау</div>
+        <div id="dbStatus" class="text-xs text-slate-400 mt-1"></div>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button id="dbExport" class="btn !py-2">💾 Деректер базасын сақтау (JSON Backup)</button>
+        <button id="dbImport" class="btn !py-2">📂 Базаны жүктеу (Import JSON)</button>
+        <button id="dbReset" class="btn btn-danger !py-2">🧹 Барлық қолданушы деректерін тазалау (Reset)</button>
+        <input id="dbFile" type="file" accept=".json,application/json" class="hidden">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 2-МОДУЛЬ: DSP ======================= -->
+<section id="m2" class="panel p-6">
+  <div class="flex items-start justify-between flex-wrap gap-4 mb-4">
+    <div>
+      <div class="tag">Модуль 02 · Web Audio API · AnalyserNode · FFT</div>
+      <h2 class="panel-title text-2xl font-bold mt-1">Цифрлық сигналдарды өңдеу: нақты уақыттағы FFT веб-шумомер</h2>
+    </div>
+    <div class="flex gap-2 flex-wrap">
+      <button id="btnMic" class="btn btn-primary">▶ Акустикалық талдауды бастау</button>
+      <button id="btnCalib" class="btn" disabled>◎ Микрофонды калибрлеу (Тыныш бөлме 30 дБ)</button>
+      <button id="btnAddMap" class="btn" disabled>＋ Нәтижені картаға қосу</button>
+    </div>
+  </div>
+
+  <div class="grid xl:grid-cols-[320px_1fr] gap-5">
+    <div class="space-y-4">
+      <div class="panel p-5 flex flex-col items-center">
+        <svg viewBox="0 0 200 200" width="220" height="220" class="meter-ring">
+          <circle cx="100" cy="100" r="84" stroke="#1b2440" stroke-width="14" fill="none"/>
+          <circle id="meterArc" cx="100" cy="100" r="84" stroke="url(#mg)" stroke-width="14" fill="none"
+            stroke-linecap="round" stroke-dasharray="527.8" stroke-dashoffset="527.8" transform="rotate(-90 100 100)"/>
+          <defs><linearGradient id="mg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#22c55e"/><stop offset="55%" stop-color="#facc15"/><stop offset="100%" stop-color="#ef4444"/></linearGradient></defs>
+          <text id="meterVal" x="100" y="100" text-anchor="middle" fill="#fff" font-size="40" font-weight="800" font-family="JetBrains Mono">--</text>
+          <text x="100" y="128" text-anchor="middle" fill="#94a3b8" font-size="14" font-family="JetBrains Mono">дБА (Fast)</text>
+        </svg>
+        <div id="meterStatus" class="mt-2 badge b-green">Күту режимі</div>
+      </div>
+      <div class="panel p-4 grid grid-cols-2 gap-3 text-sm">
+        <div><div class="text-slate-400 text-xs">L<sub>Aeq</sub> (сеанс)</div><div id="vLeq" class="kpi text-lg font-bold text-cyan-300">—</div></div>
+        <div><div class="text-slate-400 text-xs">L<sub>Amax</sub></div><div id="vLmax" class="kpi text-lg font-bold text-red-300">—</div></div>
+        <div><div class="text-slate-400 text-xs">L<sub>Z</sub> (түзетусіз)</div><div id="vLz" class="kpi text-lg font-bold">—</div></div>
+        <div><div class="text-slate-400 text-xs">Басым жиілік</div><div id="vPeak" class="kpi text-lg font-bold text-fuchsia-300">—</div></div>
+        <div><div class="text-slate-400 text-xs">1–4 кГц энергия үлесі</div><div id="vBand" class="kpi text-lg font-bold text-yellow-300">—</div></div>
+        <div><div class="text-slate-400 text-xs">Калибрлеу ығысуы</div><div id="vOffset" class="kpi text-lg font-bold">—</div></div>
+        <div class="col-span-2"><div class="text-slate-400 text-xs">Дискреттеу / FFT өлшемі / жиілік қадамы</div><div id="vSr" class="kpi text-sm">—</div></div>
+      </div>
+      <div class="panel p-4 text-xs text-slate-400 leading-relaxed">
+        <div class="tag mb-2">A-түзету (IEC 61672-1)</div>
+        <div class="formula text-[11px]">R<sub>A</sub>(f) = 12194²·f⁴ / [(f²+20,6²)·√((f²+107,7²)(f²+737,9²))·(f²+12194²)]<br>A(f) = 20·lg R<sub>A</sub>(f) + 2,00 дБ</div>
+        <p class="mt-2">Әр FFT жиілік жолағының қуаты A(f) коэффициентімен түзетіліп, энергетикалық қосынды алынады. Бұл құлақтың (әсіресе бала құлағының) ең сезімтал 1–4 кГц аймағын дұрыс ескереді.</p>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="panel p-4">
+        <div class="flex justify-between items-center mb-2">
+          <div class="tag">Жиілік спектрі · 20 Гц – 20 кГц · логарифмдік шкала</div>
+          <label class="flex items-center gap-2 text-xs text-slate-400"><input id="showAcurve" type="checkbox" checked class="accent-cyan-400"> A-түзету қисығы</label>
+        </div>
+        <canvas id="specCanvas" class="dsp" height="280"></canvas>
+      </div>
+      <div class="panel p-4">
+        <div class="tag mb-2">Спектрограмма (уақыт × жиілік × қарқындылық)</div>
+        <canvas id="waterfall" class="dsp" height="220"></canvas>
+      </div>
+      <div class="panel p-4">
+        <div class="tag mb-2">Деңгейдің уақыттық тарихы (соңғы 60 с)</div>
+        <canvas id="historyCanvas" class="dsp" height="120"></canvas>
+      </div>
+      <div id="calibBox" class="hidden panel p-4 border-cyan-400">
+        <div class="font-semibold">Калибрлеу жүріп жатыр… <span id="calibCount" class="mono text-cyan-300">3</span> с</div>
+        <div class="text-sm text-slate-400">Тыныш бөлмеде (≈30 дБА) сөйлемей, қозғалмай отырыңыз. Жүйе орташа деңгейді өлшеп, микрофон сезімталдығының ығысуын есептейді.</div>
+      </div>
+      <div class="panel p-4" id="protoPanel">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <div class="tag">Өлшеу хаттамасы · 60 секундтық L<sub>Aeq</sub></div>
+          <div class="flex gap-2">
+            <button id="protoCsv" class="btn !py-1.5 !px-3 text-xs">⬇ CSV / Excel</button>
+            <button id="protoClear" class="btn btn-danger !py-1.5 !px-3 text-xs">Тазалау</button>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-[1.4fr_1fr_0.8fr_auto] gap-2 items-end">
+          <label class="text-xs text-slate-400">Өлшеу нүктесі
+            <input id="protoPoint" list="protoPoints" placeholder="мысалы: 1. Қоршау (Бұхар жырау жағы)" class="w-full mt-1 bg-[#0e1630] border border-[#23305a] rounded-[10px] px-3 py-2 text-sm text-slate-100">
+            <datalist id="protoPoints">
+              <option value="1. Қоршау (Бұхар жырау жағы)"><option value="2. Мектеп ауласы"><option value="3. Сынып (көше жақ) — терезе жабық">
+              <option value="4. Сынып (көше жақ) — терезе ашық"><option value="5. Сынып (аула жақ)"><option value="6. Дәліз (үзіліс)">
+            </datalist></label>
+          <label class="text-xs text-slate-400">Ескерту (ауа райы, т.б.)
+            <input id="protoNote" placeholder="құрғақ, жел жоқ" class="w-full mt-1 bg-[#0e1630] border border-[#23305a] rounded-[10px] px-3 py-2 text-sm text-slate-100"></label>
+          <label class="text-xs text-slate-400">Көлік / мин
+            <input id="protoCars" type="number" min="0" placeholder="0" class="w-full mt-1 bg-[#0e1630] border border-[#23305a] rounded-[10px] px-3 py-2 text-sm text-slate-100"></label>
+          <button id="protoStart" class="btn btn-primary !py-2.5" disabled>⏱ 60 секунд өлшеу</button>
+        </div>
+        <div id="protoStatus" class="mt-3 text-sm text-slate-400">Алдымен «Акустикалық талдауды бастау» батырмасын басып, микрофонды калибрлеңіз. Сосын нүктені таңдап, «60 секунд өлшеу» батырмасын басыңыз. Өлшеу кезінде сөйлемеңіз, телефонды 1,2–1,5 м биіктікте ұстаңыз.</div>
+        <div class="mt-3 overflow-x-auto"><table class="w-full text-xs mono">
+          <thead class="text-slate-400"><tr class="border-b border-[#1b2440]"><th class="text-left py-1.5 pr-2">№</th><th class="text-left pr-2">Нүкте</th><th class="text-left pr-2">Уақыт</th><th class="text-right pr-2">L<sub>Aeq</sub></th><th class="text-right pr-2">L<sub>Amax</sub></th><th class="text-right pr-2">Көлік/мин</th><th class="text-left pr-2">Ескерту</th><th></th></tr></thead>
+          <tbody id="protoRows"></tbody></table></div>
+        <div class="mt-3"><div class="tag mb-1">Нүктелер бойынша қорытынды (энергетикалық орташа)</div>
+          <div id="protoSummary" class="text-sm text-slate-300">Әзірге өлшем жоқ.</div>
+          <div class="text-[11px] text-slate-500 mt-1">L<sub>орт</sub> = 10·lg( (10<sup>L₁/10</sup> + … + 10<sup>Lₙ/10</sup>) / n ). Әр нүктеде кемінде 3 өлшем жасаңыз: ауытқу (max − min) ≤ 3 дБ болса, нәтиже тұрақты.</div></div>
+      </div>
+    </div>
+  </div>
+  <p class="text-xs text-slate-500 mt-3">Ескерту: смартфон/ноутбук микрофоны сертификатталған 1-класты шумомер емес. Калибрлеу әртүрлі құрылғылардың сезімталдығын теңестіреді, бірақ нәтиже ± 3–5 дБ дәлдікпен бағалау ретінде қарастырылады. Дыбысты жазу тек браузер ішінде өңделеді, ешқайда жіберілмейді.</p>
+</section>
+
+<!-- ======================= 3-МОДУЛЬ: ISO 9613-2 ======================= -->
+<section id="m3" class="panel p-6">
+  <div class="tag">Модуль 03 · Инженерлік блок · ISO 9613-2</div>
+  <h2 class="panel-title text-2xl font-bold mt-1 mb-4">Акустикалық модельдеу калькуляторы: магистральдан мектеп терезесіне дейін</h2>
+
+  <div class="grid xl:grid-cols-[400px_1fr] gap-5">
+    <div class="panel p-5 space-y-5">
+      <div>
+        <div class="flex justify-between text-sm"><span>Көлік ағынының қарқындылығы</span><span class="mono text-cyan-300"><span id="qVal">2000</span> көлік/сағ</span></div>
+        <input id="qRange" type="range" min="100" max="6000" step="50" value="2000">
+      </div>
+      <div>
+        <div class="flex justify-between text-sm"><span>Мектепке дейінгі қашықтық</span><span class="mono text-cyan-300"><span id="dVal">60</span> м</span></div>
+        <input id="dRange" type="range" min="10" max="600" step="5" value="60">
+      </div>
+      <div>
+        <div class="text-sm mb-1">Жер бедері мен жабын түрі</div>
+        <select id="groundSel">
+          <option value="hard">Асфальт / бетон (G = 0, шағылысу 100%)</option>
+          <option value="grass">Көгал (G = 1, ISO 9613-2 7.3.2 формуласы)</option>
+          <option value="trees">Көгал + ағаштар белдеуі (жұтылу −6 дБ)</option>
+        </select>
+      </div>
+      <div class="flex items-center justify-between">
+        <div class="text-sm">Ғимараттардың экранизациясы<br><span class="text-xs text-slate-400">Арада үй бар (−10 дБ)</span></div>
+        <label class="switch"><input id="barChk" type="checkbox"><span class="slider"></span></label>
+      </div>
+      <div>
+        <div class="text-sm mb-1">Терезенің күйі (сынып ішіндегі деңгей үшін)</div>
+        <select id="winSel">
+          <option value="10">Терезе ашық (желдету) — фасадтың оқшаулауы ≈10 дБ</option>
+          <option value="25">Терезе жабық (қос әйнек) — ≈25 дБ</option>
+          <option value="32">Акустикалық терезе — ≈32 дБ</option>
+        </select>
+      </div>
+      <button id="btnToM4" class="btn w-full">→ Нәтижені 4-модульге бастапқы деңгей ретінде жіберу</button>
+    </div>
+
+    <div class="space-y-4">
+      <div class="formula text-sm leading-7" id="isoFormula"></div>
+      <div class="grid md:grid-cols-4 gap-3">
+        <div class="panel p-4"><div class="text-xs text-slate-400">Терезе алдындағы L<sub>eq</sub></div><div id="isoLeq" class="kpi text-3xl font-extrabold">—</div><div id="isoBadge"></div></div>
+        <div class="panel p-4"><div class="text-xs text-slate-400">Сынып ішіндегі деңгей</div><div id="isoIndoor" class="kpi text-3xl font-extrabold text-cyan-300">—</div><div class="text-[11px] text-slate-500">Оқу бөлмесі нормасы: 40 дБА</div></div>
+        <div class="panel p-4"><div class="text-xs text-slate-400">Зейіннің төмендеу индексі</div><div id="isoAtt" class="kpi text-3xl font-extrabold text-yellow-300">—</div>
+          <div class="w-full bg-slate-800 rounded mt-2"><div id="isoAttBar" class="att-bar bg-gradient-to-r from-yellow-400 to-red-500" style="width:0"></div></div></div>
+        <div class="panel p-4"><div class="text-xs text-slate-400">Есте сақтаудың төмендеу индексі</div><div id="isoMem" class="kpi text-3xl font-extrabold text-fuchsia-300">—</div>
+          <div class="w-full bg-slate-800 rounded mt-2"><div id="isoMemBar" class="att-bar bg-gradient-to-r from-fuchsia-400 to-red-500" style="width:0"></div></div></div>
+      </div>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="panel p-4">
+          <div class="tag mb-2">Әлсіреу компоненттері (дБ)</div>
+          <div id="attnBars" class="space-y-2 text-sm"></div>
+          <div id="normDist" class="text-sm mt-3 text-slate-300"></div>
+        </div>
+        <div class="panel p-4">
+          <div class="tag mb-2">L<sub>eq</sub>(d) — қашықтыққа тәуелділік қисығы</div>
+          <div class="h-[230px]"><canvas id="distChart"></canvas></div>
+        </div>
+      </div>
+      <p class="text-xs text-slate-500">Модельдік болжам: L<sub>0</sub> — 10 м қашықтықтағы жеңілдетілген эмпирикалық эмиссия моделі; көлік ағыны сызықтық көз ретінде қарастырылады (геометриялық таралу 3 дБ / қашықтық екі еселенгенде). Когнитивті индекстер — ДДҰ (WHO, 2018) ұсыныстары мен RANCH (Stansfeld және т.б., 2005) зерттеуінің сапалық қорытындыларына сүйенген эвристикалық доза–жауап моделі; клиникалық диагноз емес.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 4-МОДУЛЬ: Креативті индустрия ======================= -->
+<section id="m4" class="panel p-6">
+  <div class="tag">Модуль 04 · Креативті индустрия · Урбанистикалық интервенция</div>
+  <h2 class="panel-title text-2xl font-bold mt-1 mb-4">Шуды азайту шешімдерін сынау және биоакустикалық саунд-дизайн</h2>
+
+  <div class="grid xl:grid-cols-2 gap-5">
+    <div class="panel p-5 space-y-4">
+      <div>
+        <div class="flex justify-between text-sm"><span>Бастапқы шу деңгейі (мектеп маңы)</span><span class="mono text-cyan-300"><span id="baseVal">74</span> дБА</span></div>
+        <input id="baseRange" type="range" min="50" max="90" step="0.5" value="74">
+      </div>
+      <label class="chk"><input type="checkbox" id="iv1"><div><div class="font-semibold">🌳 Жасыл қорғаныс белдеуін отырғызу <span class="mono text-lime-300">−6 дБ</span></div><div class="text-xs text-slate-400">Көп қатарлы ағаш-бұта белдеуі (ені ≥ 15 м): дыбыс энергиясын шашыратады және жұтады, психологиялық жайлылықты арттырады.</div></div></label>
+      <label class="chk"><input type="checkbox" id="iv2"><div><div class="font-semibold">▦ Перфорацияланған акустикалық экран орнату <span class="mono text-cyan-300">−12 дБ</span></div><div class="text-xs text-slate-400">Минералды мақта толтырылған перфорацияланған алюминий панельдер: шағылысты азайтады, дифракция арқылы көлеңкелік аймақ құрады. Креативті дизайн: балалар суреттері бар арт-экран.</div></div></label>
+      <label class="chk"><input type="checkbox" id="iv3"><div><div class="font-semibold">◫ Мектеп дәлізіне дыбыс жұтатын дизайн-панельдер <span class="mono text-fuchsia-300">−8 дБ</span></div><div class="text-xs text-slate-400">Киіз/PET-талшықты 3D-панельдер: жаңғырық уақытын (RT60) қысқартып, ішкі кеңістіктегі шуды төмендетеді.</div></div></label>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="panel p-3"><div class="text-xs text-slate-400">Қорытынды деңгей</div><div id="ivFinal" class="kpi text-2xl font-bold">—</div></div>
+        <div class="panel p-3"><div class="text-xs text-slate-400">Жалпы төмендеу</div><div id="ivDelta" class="kpi text-2xl font-bold text-lime-300">—</div></div>
+        <div class="panel p-3"><div class="text-xs text-slate-400">Акустикалық энергия</div><div id="ivEnergy" class="kpi text-2xl font-bold text-cyan-300">—</div></div>
+      </div>
+      <div id="ivVerdict" class="text-sm"></div>
+      <div class="h-[280px]"><canvas id="ivChart"></canvas></div>
+    </div>
+
+    <div class="panel p-5 space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="tag">Биоакустикалық генератор · 0 mp3 файл</div>
+          <div class="text-lg font-bold">«Табиғат тыныштығы» — дыбыстық маскировка плеері</div>
+        </div>
+        <div id="sgState" class="badge b-green">Тоқтатылған</div>
+      </div>
+      <p class="text-sm text-slate-400">Барлық дыбыс Web Audio API арқылы таза математикалық алгоритммен синтезделеді. Қызғылт шудың спектрлік тығыздығы 1/f заңына бағынады (әр октаваға −3 дБ), сондықтан ол ақ шуға қарағанда құлаққа жұмсақ естіледі. Үзіліс кезінде баланың жүйке жүйесін тынықтыруға арналған креативті шешім.</p>
+      <div class="grid grid-cols-2 gap-2" id="sgModes">
+        <button class="btn active" data-mode="pink">Қызғылт шу (Pink, 1/f)</button>
+        <button class="btn" data-mode="brown">Өзен ағысы (Brown, 1/f²)</button>
+        <button class="btn" data-mode="ocean">Теңіз толқыны</button>
+        <button class="btn" data-mode="forest">Орман: жел + құстар</button>
+      </div>
+      <div>
+        <div class="flex justify-between text-sm"><span>Дыбыс деңгейі</span><span class="mono text-cyan-300" id="sgVolVal">35%</span></div>
+        <input id="sgVol" type="range" min="0" max="100" value="35">
+      </div>
+      <div>
+        <div class="flex justify-between text-sm"><span>Үзіліс таймері</span><span class="mono text-cyan-300" id="sgTimerVal">5 мин</span></div>
+        <input id="sgTimer" type="range" min="1" max="20" value="5">
+      </div>
+      <div class="flex gap-2">
+        <button id="sgPlay" class="btn btn-primary flex-1">▶ Ойнату</button>
+        <button id="sgStop" class="btn btn-danger flex-1">■ Тоқтату</button>
+      </div>
+      <div class="text-center mono text-3xl font-bold text-cyan-300" id="sgCountdown">05:00</div>
+      <canvas id="sgCanvas" class="dsp" height="150"></canvas>
+      <div class="formula text-[11px]">Pink (P. Kellet фильтрі): b₀ = 0,99886·b₀ + 0,0555179·w … y = Σbᵢ + 0,5362·w<br>Brown: yₙ = (yₙ₋₁ + 0,02·w) / 1,02 &nbsp;·&nbsp; w ~ U(−1, 1)</div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 5-МОДУЛЬ: Аналитика ======================= -->
+<section id="m5" class="panel p-6">
+  <div class="tag">Модуль 05 · Chart.js · Статистикалық талдау</div>
+  <h2 class="panel-title text-2xl font-bold mt-1 mb-4">Аналитика және статистика дашборды</h2>
+  <div class="grid xl:grid-cols-2 gap-5">
+    <div class="panel p-4">
+      <div class="flex justify-between items-center mb-2">
+        <div class="font-semibold">Нысандардағы шу деңгейі және ҚР санитариялық нормасы (55 дБА)</div>
+        <select id="sortSel" class="!w-auto text-xs"><option value="none">Реті: бастапқы</option><option value="desc">Кему ретімен</option></select>
+      </div>
+      <div class="h-[420px]"><canvas id="barChart"></canvas></div>
+    </div>
+    <div class="panel p-4">
+      <div class="font-semibold mb-1">Шу деңгейі мен зейін тестіндегі қателіктер арасындағы корреляция</div>
+      <div id="corrInfo" class="text-xs text-slate-400 mb-2"></div>
+      <div class="h-[330px]"><canvas id="corrChart"></canvas></div>
+      <div class="grid grid-cols-3 gap-3 mt-3">
+        <div class="panel p-3"><div class="text-xs text-slate-400">Пирсон r</div><div id="statR" class="kpi text-xl font-bold text-cyan-300">—</div></div>
+        <div class="panel p-3"><div class="text-xs text-slate-400">Детерминация R²</div><div id="statR2" class="kpi text-xl font-bold text-fuchsia-300">—</div></div>
+        <div class="panel p-3"><div class="text-xs text-slate-400">Регрессия</div><div id="statEq" class="kpi text-sm font-bold text-lime-300">—</div></div>
+      </div>
+      <a href="#bourdon" class="btn mt-3 w-full">↓ Бурдон зейін тестін өткізу</a>
+    </div>
+  </div>
+
+  <!-- ---------- Далалық өлшемдер кестесі ---------- -->
+  <div class="panel p-5 mt-5">
+    <div class="tag">Далалық акустикалық мониторинг · Алматы қ., 2026 ж. қараша</div>
+    <h3 class="text-xl font-bold mt-1 mb-3">Далалық өлшемдер кестесі</h3>
+    <div class="overflow-x-auto"><table class="cmp-table w-full text-sm min-w-[900px]">
+      <thead><tr><th>№</th><th>Өлшеу нүктесі</th><th>Уақыты</th><th class="text-right">L<sub>Aeq</sub>, дБА</th><th class="text-right">L<sub>Amax</sub>, дБА</th><th class="text-right">L<sub>Z</sub>, дБ</th><th>Басым жиілік</th><th class="text-right">1–4 кГц, %</th><th class="text-right">Калибрлеу ығысуы</th><th>Норма (55 дБА)</th></tr></thead>
+      <tbody id="measRows"></tbody>
+    </table></div>
+    <div id="measSummary" class="text-sm text-slate-300 mt-3"></div>
+  </div>
+
+  <!-- ---------- Интерактивті Бурдон зейін тесті ---------- -->
+  <div id="bourdon" class="panel p-5 mt-5">
+    <div class="flex items-start justify-between flex-wrap gap-3 mb-3">
+      <div>
+        <div class="tag">Когнитивті эксперимент · Бурдон әдісі (корректуралық сынама)</div>
+        <h3 class="text-xl font-bold mt-1">Интерактивті Бурдон зейін тесті (30 секунд)</h3>
+        <p class="text-sm text-slate-400 mt-1 max-w-3xl">Әріптер матрицасын жол бойымен солдан оңға қарай қарап шығып, <b class="text-cyan-300">«А»</b> және <b class="text-cyan-300">«К»</b> әріптерін басыңыз. Жүйе қаралған аймақтағы дұрыс белгілеулерді, өткізіп алуларды және қате белгілеулерді есептейді. Бір қатысушы тестті тыныш фонда және көлік шуында бір-бірден тапсырады (ретін ауыстырып отырыңыз).</p>
+      </div>
+      <button id="bdClear" class="btn btn-danger !py-1.5 !px-3 text-xs">Нәтижелерді тазалау</button>
+    </div>
+    <div class="grid xl:grid-cols-[340px_1fr] gap-5">
+      <div class="space-y-4">
+        <div class="panel p-4 space-y-3">
+          <div class="text-sm font-semibold">Режим</div>
+          <label class="chk !p-3"><input type="radio" name="bdMode" value="quiet" checked><div><div class="font-semibold">🌿 Тыныш фон</div><div class="text-xs text-slate-400">Бақылау тобы (≈ 40–45 дБА)</div></div></label>
+          <label class="chk !p-3"><input type="radio" name="bdMode" value="noise"><div><div class="font-semibold">🚗 Магистраль шуы (мақсатты деңгей ≈ 78 дБА)</div><div class="text-xs text-slate-400">Web Audio API арқылы синтезделетін көлік гуілі: шиналар, қозғалтқыш, өтіп бара жатқан көліктер, сигнал</div></div></label>
+          <div id="bdVolWrap" style="opacity:.4">
+            <div class="flex justify-between text-sm"><span>Ойнату қаттылығы</span><span class="mono text-cyan-300" id="bdVolVal">60%</span></div>
+            <input id="bdVol" type="range" min="5" max="100" value="60">
+            <button id="bdPreview" class="btn w-full mt-2 !py-2 text-sm">▶ Шуды алдын ала тыңдау</button>
+          </div>
+          <label class="block text-sm">Тест кезіндегі нақты шу деңгейі, дБА
+            <input id="bdLevel" type="number" min="20" max="120" step="0.1" value="42" class="w-full mt-1 bg-[#0e1630] border border-[#23305a] rounded-[10px] px-3 py-2 mono text-slate-100"></label>
+          <div class="text-[11px] text-slate-500">Динамиктен шығатын деңгей құрылғыға тәуелді. Оны екінші телефондағы шумомермен (2-модуль) қатысушының құлағы тұсында өлшеп, осы өріске енгізіңіз — корреляцияда дәл осы мән қолданылады.</div>
+          <label class="block text-sm">Қатысушы коды (анонимді)
+            <input id="bdWho" placeholder="мысалы: Q-07, 9-сынып" class="w-full mt-1 bg-[#0e1630] border border-[#23305a] rounded-[10px] px-3 py-2 text-slate-100"></label>
+          <button id="bdStart" class="btn btn-primary w-full !py-3 text-base">▶ Тестті бастау</button>
+        </div>
+        <div class="text-[11px] text-slate-500 leading-relaxed">Этика: кәмелетке толмаған қатысушылармен тест мектеп әкімшілігінің рұқсатымен және ерікті келісіммен өткізіледі; аты-жөн жазылмайды. Дыбыс қаттылығы құлаққа жайсыз болмауы керек.</div>
+      </div>
+      <div class="space-y-4">
+        <div id="bdStatus" class="panel p-3 text-sm min-h-[52px]">Режимді таңдап, «Тестті бастау» батырмасын басыңыз. 3 секундтық дайындықтан кейін 30 секундтық тест басталады.</div>
+        <div id="bdGrid" class="grid gap-1"></div>
+        <div class="flex gap-4 text-[11px] text-slate-400 flex-wrap">
+          <span><span class="inline-block w-3 h-3 rounded bg-green-500/50 align-middle"></span> дұрыс белгіленді</span>
+          <span><span class="inline-block w-3 h-3 rounded bg-red-500/60 align-middle"></span> қате белгіленді</span>
+          <span><span class="inline-block w-3 h-3 rounded border-2 border-dashed border-yellow-400 align-middle"></span> өткізіп алынды</span>
+          <span>Дәлдік = дұрыс / (дұрыс + өткізіп алу + қате белгілеу) × 100%</span>
+        </div>
+      </div>
+    </div>
+    <div class="grid xl:grid-cols-2 gap-5 mt-5">
+      <div>
+        <div class="tag mb-2">Тест нәтижелері (осы құрылғыда сақталады)</div>
+        <div class="overflow-x-auto max-h-[300px] overflow-y-auto"><table class="w-full text-xs mono">
+          <thead class="text-slate-400"><tr class="border-b border-[#1b2440]"><th class="text-left py-1.5 pr-2">№</th><th class="text-left pr-2">Код</th><th class="text-left pr-2">Уақыт</th><th class="text-left pr-2">Режим</th><th class="text-right pr-2">дБА</th><th class="text-right pr-2">Дәлдік, %</th><th class="text-right pr-2">Қате</th><th class="text-right pr-2">Әріп/с</th><th></th></tr></thead>
+          <tbody id="bdRows"></tbody></table></div>
+      </div>
+      <div>
+        <div class="tag mb-2">Топтарды салыстыру (орташа ± стандартты ауытқу)</div>
+        <div id="bdSummary"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------- Белгілі аналогтармен салыстыру ---------- -->
+  <div class="panel p-5 mt-5">
+    <div class="tag">Қолданбалы жоба · Белгілі аналогтармен салыстыру</div>
+    <h3 class="text-xl font-bold mt-1 mb-3">AcoustiCity Almaty және белгілі аналогтар: инженерлік салыстыру</h3>
+    <div class="overflow-x-auto">
+      <table class="cmp-table w-full text-sm min-w-[980px]">
+        <thead><tr><th>Жүйе</th><th>Құны</th><th>FFT спектрлік талдау</th><th>ISO 9613-2 болжау моделі</th><th>GIS-карта</th><th>Когнитивті әсерді бағалау</th><th>Қолжетімділік</th><th>Өлшеу дәлдігі</th></tr></thead>
+        <tbody>
+          <tr class="ours"><td><b class="text-cyan-300">AcoustiCity Almaty</b><div class="text-xs text-slate-400">осы жоба</div></td>
+            <td><span class="yes">Тегін</span><div class="text-xs text-slate-400">ашық веб-қосымша</div></td>
+            <td><span class="yes">✔</span> N = 8192, A-түзету, спектрограмма</td>
+            <td><span class="yes">✔</span> жеңілдетілген модель + Click &amp; Predict</td>
+            <td><span class="yes">✔</span> Leaflet, далалық өлшемдер, краудсенсинг</td>
+            <td><span class="yes">✔</span> Бурдон тесті + доза–жауап моделі</td>
+            <td>Кез келген браузер, смартфон; қазақ тілінде</td>
+            <td><span class="part">±3–5 дБ</span><div class="text-xs text-slate-400">калибрлеуден кейін; сертификатталмаған</div></td></tr>
+          <tr><td><b>Sound Meter</b><div class="text-xs text-slate-400">типтік мобильді қосымша</div></td>
+            <td>Тегін / жарнамалы</td>
+            <td><span class="part">◐</span> кейбір нұсқаларда ғана</td>
+            <td><span class="no">✖</span></td>
+            <td><span class="no">✖</span></td>
+            <td><span class="no">✖</span></td>
+            <td>Android / iOS</td>
+            <td><span class="no">Төмен</span><div class="text-xs text-slate-400">калибрлеусіз ауытқу үлкен</div></td></tr>
+          <tr><td><b>NoiseCapture</b><div class="text-xs text-slate-400">Université Gustave Eiffel, CNRS</div></td>
+            <td><span class="yes">Тегін</span><div class="text-xs text-slate-400">ашық код (GPL-3.0)</div></td>
+            <td><span class="yes">✔</span> 1/3-октавалық спектр</td>
+            <td><span class="no">✖</span></td>
+            <td><span class="yes">✔</span> қатысушылық шу карталары</td>
+            <td><span class="no">✖</span></td>
+            <td>Тек Android</td>
+            <td><span class="part">Смартфон деңгейі</span><div class="text-xs text-slate-400">калибрлеуден кейін</div></td></tr>
+          <tr><td><b>Brüel &amp; Kjær 2250</b><div class="text-xs text-slate-400">кәсіби шумомер-анализатор</div></td>
+            <td><span class="no">Өте жоғары</span><div class="text-xs text-slate-400">кәсіби құрал; баға жеткізушіден</div></td>
+            <td><span class="yes">✔</span> 1/1, 1/3 октава; FFT — қосымша опция (BZ-7230)</td>
+            <td><span class="no">✖</span><div class="text-xs text-slate-400">бөлек модельдеу БҚ қажет</div></td>
+            <td><span class="no">✖</span></td>
+            <td><span class="no">✖</span></td>
+            <td>Мамандар, зертханалар</td>
+            <td><span class="yes">1-класс</span><div class="text-xs text-slate-400">IEC 61672-1</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-sm text-slate-300 mt-3"><b class="text-cyan-300">Қорытынды:</b> AcoustiCity Almaty-дің артықшылығы — өлшеу, болжау, кеңістіктік талдау және когнитивті бағалауды бір тегін құралда біріктіруі. Шектеуі — смартфон микрофонының дәлдігі 1-класты шумомерден төмен, сондықтан ресми санитариялық бағалау үшін сертификатталған құрал қажет; жүйе скрининг пен мониторингке арналған.</p>
+  </div>
+</section>
+
+<footer class="text-center text-xs text-slate-500 pb-8">
+  AcoustiCity Almaty · Ғылыми-зерттеу жобасы · Карта: © OpenStreetMap контрибьюторлары, © Esri · Барлық есептеулер браузерде орындалады.
+</footer>
+</main>
+</div>
+
+<!-- ======================= 6-МОДУЛЬ: ЭКО-АССИСТЕНТ ======================= -->
+<button id="ecoFab" aria-label="Акустикалық сарапшы-кеңесшіні ашу" title="Акустикалық сарапшы-кеңесші">
+  <span class="fab-ping"></span><span class="fab-dot"></span>
+  <svg id="ecoFabIcon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/><path d="M8 11.5h1.5l1-2.5 2 5 1-2.5H16"/></svg>
+</button>
+
+<div id="ecoChat" role="dialog" aria-label="Эко-Ассистент чаты">
+  <div class="eco-head">
+    <div class="eco-avatar">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="font-bold text-[15px] leading-tight">Акустикалық сарапшы-кеңесші</div>
+      <div class="text-[11px] text-slate-400 truncate">Сұрақ-жауап · қалалық акустика және балалар денсаулығы</div>
+      <div class="mt-1 flex items-center gap-2"><span id="ecoModePill" class="mode-pill mode-local">СҰРАҚ-ЖАУАП · КІРІКТІРІЛГЕН ЛОГИКА</span><span class="text-[10px] text-green-400">● онлайн</span></div>
+    </div>
+    <button id="ecoClear" class="eco-iconbtn" title="Чатты тазалау"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button>
+    
+    <button id="ecoClose" class="eco-iconbtn" title="Жабу"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+  </div>
+
+  <div id="ecoMsgs" aria-live="polite"></div>
+  <div id="ecoChips"></div>
+  <div class="eco-input">
+    <textarea id="ecoText" placeholder="Сұрағыңызды жазыңыз… (мысалы: «Самалдағы балабақша қауіпсіз бе?»)" rows="1"></textarea>
+    <button id="ecoSend" class="eco-send" title="Жіберу"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+  </div>
+  <div id="ecoSettings">
+    <div class="font-semibold text-cyan-300 mb-1">AI режимі (міндетті емес)</div>
+    <div class="text-slate-400 mb-2">Кілт енгізілмесе, ассистент кірістірілген смарт-логикамен жұмыс істейді. Өз API кілтіңізді немесе өз серверіңізді (прокси) қоссаңыз, жауапты тіл моделі құрайды.</div>
+    <label>Провайдер
+      <select id="ecoProvider">
+        <option value="proxy">Өз серверім / прокси (кілт жасырын, ұсынылады)</option>
+        <option value="deepseek">DeepSeek</option>
+        <option value="openai">OpenAI (ChatGPT)</option>
+        <option value="gemini">Google Gemini</option>
+        <option value="groq">Groq (Llama)</option>
+        <option value="anthropic">Anthropic Claude</option>
+        <option value="custom">Басқа OpenAI-үйлесімді API</option>
+      </select></label>
+    <label class="block mt-2" id="ecoKeyWrap">API кілті<input id="ecoKey" type="password" placeholder="sk-... (DeepSeek / OpenAI) · AIza... · gsk_..." autocomplete="off"></label>
+    <label class="block mt-2">Модель<input id="ecoModel" type="text"></label>
+    <label class="block mt-2">API мекенжайы (endpoint)<input id="ecoEndpoint" type="text"></label>
+    <label class="flex items-center gap-2 mt-3 cursor-pointer"><input id="ecoGeneral" type="checkbox" class="!w-4 !h-4 !mt-0 accent-cyan-400"> <span>Кез келген сұраққа жауап беру (жалпы режим)</span></label>
+    <div class="flex gap-2 mt-3">
+      <button id="ecoSaveKey" class="btn btn-primary flex-1 !py-2">Сақтау</button>
+      <button id="ecoTestKey" class="btn flex-1 !py-2">Тексеру</button>
+      <button id="ecoDelKey" class="btn btn-danger flex-1 !py-2">Өшіру</button>
+    </div>
+    <div class="text-[11px] text-yellow-300/80 mt-2">⚠ Кілт тек осы браузерде (localStorage) сақталады. Кілтті ашық сайттың кодына ЕШҚАШАН жазбаңыз: оны кез келген адам көшіріп, сіздің шотыңыздан ақша жұмсай алады. Барлық келушілер үшін AI керек болса, «Өз серверім / прокси» нұсқасын қолданыңыз.</div>
+  </div>
+
+  <button id="ecoGear" class="eco-sys" type="button">⚙️ Жүйелік баптаулар</button>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   ЖАЛПЫ КӨМЕКШІ ФУНКЦИЯЛАР
+   ============================================================ */
+const CENTER = [43.238949, 76.889709];
+const NORM = 55;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lg = Math.log10;
+const fmt = (v, n = 1) => (isFinite(v) ? v.toFixed(n).replace('.', ',') : '—');
+function levelClass(L) { return L > 70 ? 'red' : (L >= 55 ? 'yellow' : 'green'); }
+function levelColor(L) { return L > 70 ? '#ef4444' : (L >= 55 ? '#facc15' : '#22c55e'); }
+function levelBadge(L) {
+  const c = levelClass(L);
+  const t = c === 'red' ? 'Қауіпті' : c === 'yellow' ? 'Орташа қауіп' : 'Қауіпсіз';
+  return `<span class="badge b-${c}">${t}</span>`;
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.innerHTML = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3800);
+}
+function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+// Энергетикалық қосынды
+function energySum(levels) { return 10 * lg(levels.reduce((s, L) => s + Math.pow(10, L / 10), 0)); }
+
+/* ---------- Когнитивті доза–жауап моделі (эвристикалық) ---------- */
+function attentionDrop(L) { return clamp((L - 50) * 1.4, 0, 60); }
+function memoryDrop(L) { return clamp((L - 50) * 1.0, 0, 45); }
+function cognitiveText(L) {
+  if (L > 70) return 'Жоғары тәуекел: ұзақ әсерде созылмалы стресс (кортизол деңгейінің өсуі), зейін тұрақтылығының және оқу түсінігінің айқын төмендеуі, ұйқы сапасының бұзылуы.';
+  if (L >= 55) return 'Орташа тәуекел: тапсырмаға шоғырлану уақыты қысқарады, сөйлеуді қабылдау қиындайды, мұғалім дауысын көтеруге мәжбүр болады.';
+  return 'Төмен тәуекел: когнитивті функцияларға айтарлықтай әсер байқалмайды, оқу ортасы жайлы.';
+}
+function creativeSolution(L, type) {
+  if (L > 70) return 'Перфорацияланған арт-экран (балалар суреттерімен) + көп қатарлы жасыл белдеу + фасадқа акустикалық терезелер (жиынтық −18…−25 дБ).';
+  if (L >= 55) {
+    if (type === 'school' || type === 'kinder') return 'Вертикалды көгалдандыру («жасыл қабырға»), дәліздерге дыбыс жұтатын дизайн-панельдер, үзілісте биоакустикалық маскировка.';
+    return 'Жасыл қорғаныс белдеуі, жол жабынын «тыныш асфальтқа» ауыстыру, жылдамдықты шектеу 40 км/сағ.';
+  }
+  return 'Биоакустикалық «тыныштық аймағы»: табиғат дыбыстары бар демалыс алаңы, ашық аспан астындағы сынып ретінде пайдалану.';
+}
+const TYPE_KZ = { road: 'Магистраль / қиылыс', school: 'Мектеп', kinder: 'Балабақша', park: 'Саябақ', metro: 'Метро бекеті', public: 'Қоғамдық орын', crowd: 'Краудсенсинг өлшемі', predict: 'Болжамды нүкте' };
+
+/* ============================================================
+   ДЕРЕКТЕР: 20 гео-нүкте және магистральдар
+   ============================================================ */
+/* ДАЛАЛЫҚ ӨЛШЕМДЕР — авторлардың AcoustiCity веб-шумомерімен жүргізген өлшемдері (Алматы қ., 2026 ж. қараша).
+   db = LAeq (сеанс), lmax = LAmax, lz = түзетусіз деңгей, peak = басым жиілік, band = 1–4 кГц энергия үлесі,
+   offset = өлшеу кезіндегі калибрлеу ығысуы (+100,0 = әдепкі мән, калибрленбеген). Координаттар — авторлардың GPS деректері. */
+const POINTS = [
+  { name: 'Абай – Саин қиылысы', type: 'road', lat: 43.220040, lng: 76.851356, db: 54.9, lmax: 61.8, lz: 72.5, peak: '1,26 кГц', band: 51, offset: 100.0, time: '18:07' },
+  { name: 'Саин – Шаляпин қиылысы', type: 'road', lat: 43.213812, lng: 76.856913, db: 56.8, lmax: 70.4, lz: 63.4, peak: '1,58 кГц', band: 44, offset: 100.0, time: '18:19' },
+  { name: 'Талжанов көшесі, 27', type: 'road', lat: 43.201488, lng: 76.823220, db: 66.2, lmax: 77.6, lz: 82.3, peak: '270 Гц', band: 8, offset: 100.0, time: '18:55' },
+  { name: 'РФМШ (Республикалық физика-математика мектебі)', type: 'school', lat: 43.231674, lng: 76.917409, db: 34.8, lmax: 44.1, lz: 54.0, peak: '305 Гц', band: 41, offset: 97.6, time: '20:05' },
+  { name: 'Бас ботаникалық бақ', type: 'park', lat: 43.226466, lng: 76.915706, db: 27.2, lmax: 38.0, lz: 40.3, peak: '1,01 кГц', band: 68, offset: 85.6, time: '20:14' },
+  { name: 'Төле би – Абылай хан қиылысы', type: 'road', lat: 43.254514, lng: 76.941411, db: 34.6, lmax: 49.9, lz: 48.5, peak: '1,00 кГц', band: 53, offset: 89.7, time: '12:45' },
+  { name: '«Форум» сауда орталығы маңы', type: 'public', lat: 43.232388, lng: 76.935681, db: 31.2, lmax: 38.4, lz: 51.5, peak: '926 Гц', band: 42, offset: 94.0, time: '20:31' },
+  { name: 'Сәтбаев – Байтұрсынұлы қиылысы', type: 'road', lat: 43.237330, lng: 76.928097, db: 38.5, lmax: 48.0, lz: 55.2, peak: '855 Гц', band: 44, offset: 98.3, time: '20:51' },
+  { name: 'Абай – Байтұрсынұлы қиылысы', type: 'road', lat: 43.241172, lng: 76.927069, db: 29.2, lmax: 41.8, lz: 50.7, peak: '305 Гц', band: 59, offset: 88.8, time: '20:58' },
+  { name: 'Жароков – Қабанбай батыр қиылысы', type: 'road', lat: 43.246431, lng: 76.898586, db: 24.8, lmax: 27.3, lz: null, peak: '1,15 кГц', band: null, offset: null, time: '20:48' },
+  { name: 'Әл-Фараби – Сейфуллин қиылысы', type: 'road', lat: 43.227053, lng: 76.942653, db: 35.6, lmax: 41.6, lz: 52.5, peak: '914 Гц', band: 31, offset: 88.3, time: '21:19' },
+  { name: 'Молдабеков көшесі', type: 'road', lat: 43.320042, lng: 77.086469, db: 39.3, lmax: 52.5, lz: 55.3, peak: '826 Гц', band: 37, offset: 109.4, time: '06:13' },
+  { name: 'Жамбыл – Мұратбаев қиылысы', type: 'road', lat: 43.246262, lng: 76.919662, db: 42.9, lmax: 57.0, lz: 66.6, peak: '234 Гц', band: 25, offset: 114.7, time: '19:47' },
+  { name: '«Әуезов театры» метро бекетінің платформасы', type: 'metro', lat: 43.239986, lng: 76.916732, db: 47.8, lmax: 56.6, lz: null, peak: null, band: null, offset: null, time: '12.11, 18:53', note: 'жел бар; 60 секундтық хаттама, n = 1' }
+].map(p => Object.assign(p, { measured: true }));
+
+
+const ROADS = [
+  { name: 'Әл-Фараби даңғылы', q: 5000, path: [[43.1890, 76.8550], [43.1935, 76.8801], [43.2018, 76.8925], [43.2110, 76.9150], [43.2171, 76.9332], [43.2195, 76.9575], [43.2165, 76.9750]] },
+  { name: 'Абай даңғылы', q: 4200, path: [[43.2285, 76.8150], [43.2300, 76.8460], [43.2340, 76.8900], [43.2380, 76.9150], [43.2405, 76.9445], [43.2400, 76.9570]] },
+  { name: 'Райымбек даңғылы', q: 4600, path: [[43.2700, 76.8250], [43.2675, 76.8800], [43.2645, 76.9360], [43.2635, 76.9720]] },
+  { name: 'Төле би көшесі', q: 2600, path: [[43.2510, 76.8250], [43.2525, 76.8800], [43.2545, 76.9200], [43.2555, 76.9440], [43.2560, 76.9560]] },
+  { name: 'Достық даңғылы', q: 3200, path: [[43.2625, 76.9525], [43.2400, 76.9568], [43.2195, 76.9575], [43.2050, 76.9640]] },
+  { name: 'Сейфуллин даңғылы', q: 3000, path: [[43.2950, 76.9345], [43.2645, 76.9360], [43.2400, 76.9372], [43.2200, 76.9385]] },
+  { name: 'Саин көшесі', q: 4000, path: [[43.2720, 76.8450], [43.2300, 76.8460], [43.1980, 76.8475]] },
+  { name: 'Розыбакиев көшесі', q: 3400, path: [[43.2560, 76.8930], [43.2300, 76.8925], [43.2030, 76.8925]] },
+  { name: 'Бұхар жырау бульвары', q: 1500, path: [[43.2320, 76.8990], [43.2316, 76.9170], [43.2312, 76.9330]] },
+  { name: 'Абылай хан даңғылы', q: 2200, path: [[43.2700, 76.9440], [43.2555, 76.9440], [43.2405, 76.9445]] }
+];
+const L_BG = 42;      // Қалалық фон
+const ALPHA = 3.7;    // дБ/км, 1 кГц
+
+/* Геодезиялық есептеу: нүктеден сегментке дейінгі қашықтық (м) */
+function distToSegment(p, a, b) {
+  const k = Math.cos(p[0] * Math.PI / 180);
+  const toXY = (q) => [(q[1] - p[1]) * 111320 * k, (q[0] - p[0]) * 110540];
+  const A = toXY(a), B = toXY(b);
+  const dx = B[0] - A[0], dy = B[1] - A[1];
+  const len2 = dx * dx + dy * dy;
+  let t = len2 ? -(A[0] * dx + A[1] * dy) / len2 : 0;
+  t = clamp(t, 0, 1);
+  const x = A[0] + t * dx, y = A[1] + t * dy;
+  return Math.hypot(x, y);
+}
+function roadEmission(q) { return 10 * lg(q) + 42; }
+function predictAt(lat, lng, minD = 7.5) {
+  const p = [lat, lng];
+  let nearest = null; const contribs = [];
+  ROADS.forEach(r => {
+    let d = Infinity;
+    for (let i = 0; i < r.path.length - 1; i++) d = Math.min(d, distToSegment(p, r.path[i], r.path[i + 1]));
+    const dd = Math.max(d, minD);
+    const L = roadEmission(r.q) - 10 * lg(dd / 10) - ALPHA * dd / 1000 - (dd > 200 ? 3 : 0); // >200 м: кедергі/жер әсері
+    contribs.push(L);
+    if (!nearest || d < nearest.d) nearest = { name: r.name, d, q: r.q, L };
+  });
+  const total = energySum([L_BG, ...contribs]);
+  return { total, nearest };
+}
+
+/* Мектептердің мекенжайы көше бойында тұрады, ал ғимараттың өзі жолдан шегініп салынады.
+   Сондықтан барлық мектептер үшін бірдей болжау шарты алынады: жолға дейінгі тиімді қашықтық ≥ 50 м. */
+const SCHOOL_SETBACK = 50;
+
+
+
+/* ============================================================
+   1-МОДУЛЬ: LEAFLET КАРТАСЫ
+   ============================================================ */
+const ALMATY_BOUNDS = L.latLngBounds([43.10, 76.70], [43.40, 77.12]);
+const map = L.map('map', {
+  zoomControl: true, preferCanvas: false, minZoom: 11, maxZoom: 19,
+  maxBounds: ALMATY_BOUNDS.pad(0.15), maxBoundsViscosity: 0.8
+}).setView(CENTER, 12);
+const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+const IS_FILE = location.protocol === 'file:';
+// Әр тайл-сервер үшін бірнеше нұсқа: біреуі жауап бермесе, келесісіне автоматты ауысады
+const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
+const esriDark = L.layerGroup([
+  L.tileLayer(ESRI + 'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxNativeZoom: 16, maxZoom: 19 }),
+  L.tileLayer(ESRI + 'Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxNativeZoom: 16, maxZoom: 19 })
+]);
+// Esri серверлері кілтсіз әрі file:// арқылы ашылған бетте де жұмыс істейді, сондықтан олар бірінші тұр
+const baseLayers = {
+  'Алматы — көше картасы (Esri)': L.tileLayer(ESRI + 'World_Street_Map/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 19 }),
+  'Алматы — спутник (Esri)': L.tileLayer(ESRI + 'World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 19 }),
+  'Алматы — қараңғы (Cyber, Esri)': esriDark
+};
+// OSM серверлері file:// арқылы ашылған беттерге тайл бермейді («Access blocked»),
+// сондықтан ол тек сайт интернетте (http/https) ашылғанда қосылады
+if (!IS_FILE) {
+  baseLayers['Алматы — OpenStreetMap'] = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: OSM_ATTR, maxZoom: 19 });
+}
+const BASE_ORDER = Object.keys(baseLayers);
+let activeBase = BASE_ORDER[0], tileErrors = 0, tileOk = 0, autoSwitched = 0;
+BASE_ORDER.forEach(name => {
+  const layer = baseLayers[name];
+  const tiles = layer.getLayers ? layer.getLayers() : [layer];
+  tiles.forEach(tl => tl.on('tileload', () => { if (activeBase === name) tileOk++; }));
+  tiles[0].on('tileerror', () => {
+    if (activeBase !== name) return;
+    tileErrors++;
+    // Тайлдардың көбі жүктелмесе, келесі серверге ауысу
+    if (tileErrors >= 6 && tileOk < 3 && autoSwitched < BASE_ORDER.length - 1) {
+      autoSwitched++;
+      const next = BASE_ORDER[(BASE_ORDER.indexOf(name) + 1) % BASE_ORDER.length];
+      activeBase = next; tileErrors = 0; tileOk = 0;
+      map.removeLayer(layer); baseLayers[next].addTo(map);
+      toast('Карта сервері жауап бермеді, келесі серверге ауыстым: ' + next);
+    }
+  });
+});
+map.on('baselayerchange', (e) => { activeBase = e.name; tileErrors = 0; tileOk = 0; });
+baseLayers[activeBase].addTo(map);
+L.control.layers(baseLayers, null, { position: 'topright', collapsed: false }).addTo(map);
+L.control.scale({ metric: true, imperial: false }).addTo(map);
+// Қала атауы белгісі
+L.marker(CENTER, { interactive: false, icon: L.divIcon({ className: '', iconSize: [0, 0],
+  html: '<div style="transform:translate(-50%,-140%);white-space:nowrap;font-weight:800;font-size:13px;color:#0e7490;background:rgba(255,255,255,.85);padding:2px 8px;border-radius:8px;border:1px solid #22d3ee">АЛМАТЫ · орталық 43.2389°, 76.8897°</div>' }) }).addTo(map);
+
+const markerLayer = L.layerGroup().addTo(map);
+const heatLayer = L.layerGroup();
+const riskLayer = L.layerGroup();
+const roadLayer = L.layerGroup().addTo(map);
+const crowdLayer = L.layerGroup().addTo(map);
+const predictLayer = L.layerGroup().addTo(map);
+
+function pulseIcon(cls) {
+  return L.divIcon({
+    className: '', iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -10],
+    html: `<div class="pulse-marker pm-${cls}"><div class="ring"></div><div class="ring r2"></div><div class="core"></div></div>`
+  });
+}
+function popupHTML(o) {
+  const att = attentionDrop(o.db), mem = memoryDrop(o.db);
+  return `
+  <div style="font-family:Inter">
+    <div style="font-size:11px;letter-spacing:.12em;color:#22d3ee;font-family:JetBrains Mono">${TYPE_KZ[o.type] || ''}</div>
+    <div style="font-weight:800;font-size:15px;margin:2px 0 8px">${o.name}</div>
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">
+      <span style="font-family:JetBrains Mono;font-size:28px;font-weight:800;color:${levelColor(o.db)}">${fmt(o.db)}</span>
+      <span style="color:#94a3b8">дБА</span> ${levelBadge(o.db)}
+    </div>
+    ${o.measured ? `<div style="font-size:11.5px;color:#a5f3fc;font-family:JetBrains Mono;margin-bottom:6px;line-height:1.6">
+      Далалық өлшем · уақыты: ${o.time}<br>
+      L<sub>Amax</sub> = ${fmt(o.lmax)} дБА${o.lz != null ? ` · L<sub>Z</sub> = ${fmt(o.lz)} дБ` : ''}<br>
+      ${o.peak ? `Басым жиілік: ${o.peak}` : ''}${o.band != null ? ` · 1–4 кГц үлесі: ${o.band}%` : ''}<br>
+      Калибрлеу ығысуы: ${o.offset == null ? 'тіркелмеген' : (o.offset === 100 ? '+100,0 дБ (әдепкі, калибрленбеген)' : '+' + fmt(o.offset) + ' дБ')}${o.note ? `<br>Ескерту: ${o.note}` : ''}</div>` : ''}
+    ${o.modelled && !o.top10 && !o.own ? `<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">дБА — ISO 9613-2 негізіндегі модельдік болжам (тиімді қашықтық ≥ ${o.setback || SCHOOL_SETBACK} м).</div>` : ''}
+    ${o.top10 ? `<div style="font-size:12px;color:#a5f3fc;margin-bottom:4px">🏆 <b>Алматының үздік 10 мектебі</b> · ${o.address}<br><span style="color:#94a3b8">дБ — модельдік болжам (ең жақын жол: ${predictAt(o.lat, o.lng).nearest.name}, ғимараттың жолдан шегінуі ≥ ${SCHOOL_SETBACK} м). Нақты өлшеммен нақтылаңыз.</span></div>` : ''}
+    ${o.own ? `<div style="font-size:12px;color:#a5f3fc;margin-bottom:4px">★ <b>Біздің мектеп</b> · ${o.address}<br><span style="color:#94a3b8">дБ мәні — модельдік болжам (ең жақын жол: ${predictAt(o.lat, o.lng).nearest.name}, ғимараттың жолдан шегінуі ≥ ${SCHOOL_SETBACK} м). Шумомермен (2-модуль) нақты өлшеп, нақтылаңыз.</span></div>` : ''}
+    ${o.extra || ''}
+    <div style="font-size:12px;color:#cbd5e1;margin:6px 0"><b style="color:#fde047">Когнитивті әсері:</b> ${cognitiveText(o.db)}</div>
+    <div style="font-size:12px;color:#cbd5e1;margin:4px 0">Зейіннің төмендеуі: <b style="color:#fde047">${fmt(att, 0)}%</b> · Есте сақтау: <b style="color:#f0abfc">${fmt(mem, 0)}%</b></div>
+    <div style="font-size:12px;color:#cbd5e1;margin-top:6px;padding-top:6px;border-top:1px solid #1e2a4d"><b style="color:#a3e635">Креативті индустрия шешімі:</b> ${creativeSolution(o.db, o.type)}</div>
+    <div style="font-size:10px;color:#64748b;margin-top:6px;font-family:JetBrains Mono">${o.lat.toFixed(5)}, ${o.lng.toFixed(5)}</div>
+    ${o.type === 'crowd' && o.id ? `<button onclick="deleteCrowd('${o.id}')" style="margin-top:8px;width:100%;padding:7px;border-radius:9px;border:1px solid #7f1d1d;background:#3b0d14;color:#fecaca;font-weight:600;cursor:pointer">🗑️ Бұл нүктені өшіру</button>` : ''}
+  </div>`;
+}
+
+function renderPoints() {
+  markerLayer.clearLayers(); heatLayer.clearLayers(); riskLayer.clearLayers();
+  const list = document.getElementById('pointList'); list.innerHTML = '';
+  POINTS.forEach((o, i) => {
+    const m = L.marker([o.lat, o.lng], { icon: pulseIcon(levelClass(o.db)) }).bindPopup(popupHTML(o), { maxWidth: 320 });
+    if (o.top10) m.bindTooltip('🏆 ' + o.top10 + '. ' + o.short + ' — ' + fmt(o.db) + ' дБА', { direction: 'top', offset: [0, -10] });
+    markerLayer.addLayer(m);
+
+    // Акустикалық радиус: 55 дБ шегіне дейін (нүктелік көз, 6 дБ/екі еселену)
+    const rNorm = clamp(10 * Math.pow(10, (o.db - NORM) / 20), 30, 1400);
+    [1, 0.66, 0.36].forEach((f, k) => {
+      heatLayer.addLayer(L.circle([o.lat, o.lng], {
+        radius: rNorm * f + 40, stroke: false, fillColor: levelColor(o.db), fillOpacity: 0.10 + k * 0.08, interactive: false
+      }));
+    });
+
+    // Балалар мекемелерінің қауіп аймақтары (300 м буфер)
+    if (o.type === 'school' || o.type === 'kinder') {
+      riskLayer.addLayer(L.circle([o.lat, o.lng], {
+        radius: 300, color: levelColor(o.db), weight: 2, dashArray: '6 6', fillColor: levelColor(o.db), fillOpacity: 0.12
+      }).bindTooltip(`${o.name}: ${fmt(o.db)} дБА — 300 м қорғау буфері`, { sticky: true }));
+    }
+
+    const li = document.createElement('li');
+    li.className = 'flex justify-between items-center gap-2 px-2 py-1 rounded hover:bg-cyan-500/10 cursor-pointer';
+    li.innerHTML = `<span class="truncate">${i + 1}. ${o.name}</span><span class="mono font-bold" style="color:${levelColor(o.db)}">${o.db}</span>`;
+    li.onclick = () => { map.flyTo([o.lat, o.lng], 15, { duration: 0.8 }); setTimeout(() => m.openPopup(), 850); };
+    list.appendChild(li);
+  });
+}
+
+function renderRoads() {
+  roadLayer.clearLayers();
+  ROADS.forEach(r => {
+    const L0 = roadEmission(r.q);
+    // Шу дәлізі (жарқырау эффекті)
+    roadLayer.addLayer(L.polyline(r.path, { color: levelColor(L0 - 3), weight: 14, opacity: 0.12, interactive: false }));
+    roadLayer.addLayer(L.polyline(r.path, { color: levelColor(L0 - 3), weight: 3, opacity: 0.85 })
+      .bindTooltip(`${r.name}: ${r.q} көлік/сағ · L₀(10 м) ≈ ${fmt(L0)} дБА`, { sticky: true }));
+  });
+}
+
+renderPoints(); renderRoads();
+map.fitBounds(L.latLngBounds(POINTS.map(p => [p.lat, p.lng])).pad(0.08));
+
+/* Қабат батырмалары */
+function toggleLayer(btn, layer) {
+  btn.addEventListener('click', () => {
+    if (map.hasLayer(layer)) { map.removeLayer(layer); btn.classList.remove('active'); }
+    else { map.addLayer(layer); btn.classList.add('active'); markerLayer.eachLayer(l => l.setZIndexOffset && l.setZIndexOffset(1000)); }
+  });
+}
+toggleLayer(document.getElementById('btnHeat'), heatLayer);
+toggleLayer(document.getElementById('btnRisk'), riskLayer);
+toggleLayer(document.getElementById('btnRoads'), roadLayer);
+
+/* Click & Predict */
+let predictMode = false;
+let lastClick = null;
+const btnPredict = document.getElementById('btnPredict');
+btnPredict.addEventListener('click', () => {
+  predictMode = !predictMode;
+  btnPredict.classList.toggle('active', predictMode);
+  btnPredict.innerHTML = predictMode ? '⌖ Болжау режимі: ҚОСУЛЫ' : '⌖ Нүктені басып есептеу (Click &amp; Predict)';
+  document.getElementById('predictHint').classList.toggle('hidden', !predictMode);
+  map.getContainer().classList.toggle('map-crosshair', predictMode);
+});
+map.on('click', (e) => {
+  lastClick = e.latlng;
+  if (!predictMode) return;
+  const { lat, lng } = e.latlng;
+  const res = predictAt(lat, lng);
+  const Lp = Math.round(res.total * 10) / 10;
+  const o = {
+    name: 'Болжамды нүкте #' + (predictLayer.getLayers().length + 1), type: 'predict', lat, lng, db: Lp,
+    extra: `<div style="font-size:12px;color:#a5f3fc;font-family:JetBrains Mono">Ең жақын магистраль: ${res.nearest.name}<br>Қашықтық: ${fmt(res.nearest.d, 0)} м · Q = ${res.nearest.q} көлік/сағ</div>`
+  };
+  const m = L_marker(o);
+  predictLayer.addLayer(m); m.openPopup();
+  document.getElementById('predictOut').innerHTML = `
+    <div class="flex items-baseline gap-2"><span class="kpi text-4xl font-extrabold" style="color:${levelColor(Lp)}">${fmt(Lp)}</span><span class="text-slate-400">дБА</span> ${levelBadge(Lp)}</div>
+    <div class="mt-2 text-slate-300">Ең жақын жол: <b class="text-cyan-300">${res.nearest.name}</b></div>
+    <div class="text-slate-300">Перпендикуляр қашықтық: <b class="mono">${fmt(res.nearest.d, 0)} м</b></div>
+    <div class="text-slate-300">Зейіннің төмендеуі: <b class="mono text-yellow-300">${fmt(attentionDrop(Lp), 0)}%</b> · Есте сақтау: <b class="mono text-fuchsia-300">${fmt(memoryDrop(Lp), 0)}%</b></div>
+    <div class="text-xs text-slate-500 mt-2">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
+    <button class="btn mt-3 w-full" onclick="predictLayer.clearLayers()">✕ Болжамды нүктелерді тазалау</button>`;
+});
+function L_marker(o) {
+  const cls = o.type === 'predict' ? 'predict' : (o.type === 'crowd' ? 'crowd' : levelClass(o.db));
+  return L.marker([o.lat, o.lng], { icon: pulseIcon(cls) }).bindPopup(popupHTML(o), { maxWidth: 320 });
+}
+
+/* Краудсенсинг нүктелерін қалпына келтіру */
+let CROWD = load('acousticity_crowd', []);
+CROWD.forEach(c => { if (!c.id) c.id = 'c' + Math.random().toString(36).slice(2, 9); c.type = 'crowd'; });
+store('acousticity_crowd', CROWD);
+function renderCrowd() {
+  crowdLayer.clearLayers();
+  CROWD.forEach(o => crowdLayer.addLayer(L_marker(o)));
+  document.getElementById('kpiCrowd').textContent = CROWD.length;
+  updateDbStatus();
+}
+renderCrowd();
+
+/* KPI */
+function updateKPI() {
+  const all = POINTS.map(p => p.db).concat(CROWD.map(c => c.db));
+  document.getElementById('kpiPoints').textContent = POINTS.length + CROWD.length;
+  document.getElementById('kpiAvg').textContent = fmt(energySum(all) - 10 * lg(all.length)) + ' дБА';
+  document.getElementById('kpiRed').textContent = all.filter(v => v > 70).length;
+  const kids = POINTS.filter(p => p.type === 'school' || p.type === 'kinder');
+  document.getElementById('kpiKids').textContent = kids.filter(k => k.db > NORM).length + ' / ' + kids.length;
+}
+updateKPI();
+
+/* ============================================================
+   2-МОДУЛЬ: DSP — FFT ШУМОМЕР
+   ============================================================ */
+let audioCtx = null, analyser = null, micStream = null, micSource = null, rafId = null;
+let freqData = null, timeData = null, aWeightLin = null, aWeightDb = null;
+let calibOffset = load('acousticity_offset', 100);  // dBFS → дБ(SPL) ығысуы
+let fastPow = 0, leqEnergy = 0, leqTime = 0, lmax = -Infinity, lastT = 0, lastLA = NaN;
+let calibrating = false, calibAcc = [];
+const history = [];
+const specCanvas = document.getElementById('specCanvas');
+const wfCanvas = document.getElementById('waterfall');
+const histCanvas = document.getElementById('historyCanvas');
+const ENBW = 1.73; // Блэкман терезесінің эквивалентті шу жолағы (бин)
+
+function aWeight(f) {
+  const f2 = f * f;
+  const ra = (12194 ** 2 * f2 * f2) / ((f2 + 20.6 ** 2) * Math.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194 ** 2));
+  return 20 * lg(ra) + 2.0;
+}
+function fitCanvas(c) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = parseInt(c.getAttribute('height'));
+  if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); c.style.height = h + 'px'; }
+  return { w: c.width, h: c.height, dpr };
+}
+const FMIN = 20, FMAX = 20000;
+const fx = (f, w) => (lg(f / FMIN) / lg(FMAX / FMIN)) * w;
+const xf = (x, w) => FMIN * Math.pow(FMAX / FMIN, x / w);
+
+function drawSpecGrid(ctx, w, h, dpr) {
+  ctx.fillStyle = '#03050b'; ctx.fillRect(0, 0, w, h);
+  // 1–4 кГц аймағы
+  const x1 = fx(1000, w), x2 = fx(4000, w);
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, 'rgba(239,68,68,.18)'); g.addColorStop(1, 'rgba(239,68,68,.03)');
+  ctx.fillStyle = g; ctx.fillRect(x1, 0, x2 - x1, h);
+  ctx.fillStyle = '#fca5a5'; ctx.font = `${10 * dpr}px JetBrains Mono`;
+  ctx.fillText('1–4 кГц: бала зейініне ең сезімтал аймақ', x1 + 4 * dpr, 14 * dpr);
+  ctx.strokeStyle = 'rgba(148,163,184,.12)'; ctx.lineWidth = 1;
+  ctx.fillStyle = '#64748b';
+  [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000].forEach(f => {
+    const x = fx(f, w); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    ctx.fillText(f >= 1000 ? (f / 1000) + 'к' : f, x + 2 * dpr, h - 4 * dpr);
+  });
+  for (let db = 0; db <= 100; db += 20) {
+    const y = h - (db / 100) * (h - 20 * dpr) - 16 * dpr;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    ctx.fillText(db + ' дБ', 4 * dpr, y - 2 * dpr);
+  }
+}
+drawSpecGrid(specCanvas.getContext('2d'), fitCanvas(specCanvas).w, fitCanvas(specCanvas).h, window.devicePixelRatio || 1);
+(function initWF() { const s = fitCanvas(wfCanvas); const c = wfCanvas.getContext('2d'); c.fillStyle = '#03050b'; c.fillRect(0, 0, s.w, s.h); fitCanvas(histCanvas); })();
+
+function heatColor(t) { // 0..1 → кибер-палитра
+  t = clamp(t, 0, 1);
+  const stops = [[3, 5, 11], [30, 27, 120], [8, 145, 178], [34, 211, 238], [232, 121, 249], [250, 204, 21], [255, 255, 255]];
+  const p = t * (stops.length - 1), i = Math.floor(p), f = p - i;
+  const a = stops[i], b = stops[Math.min(i + 1, stops.length - 1)];
+  return `rgb(${a[0] + (b[0] - a[0]) * f | 0},${a[1] + (b[1] - a[1]) * f | 0},${a[2] + (b[2] - a[2]) * f | 0})`;
+}
+
+async function startMic() {
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    });
+  } catch (e) {
+    toast('⚠ Микрофонға рұқсат берілмеді немесе құрылғы табылмады. Браузер баптауларын тексеріңіз (HTTPS немесе file:// қажет).');
+    return;
+  }
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  micSource = audioCtx.createMediaStreamSource(micStream);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 8192;
+  analyser.smoothingTimeConstant = 0.5;
+  analyser.minDecibels = -140; analyser.maxDecibels = 0;
+  micSource.connect(analyser);
+  freqData = new Float32Array(analyser.frequencyBinCount);
+  timeData = new Float32Array(analyser.fftSize);
+  const binHz = audioCtx.sampleRate / analyser.fftSize;
+  aWeightDb = new Float32Array(freqData.length); aWeightLin = new Float32Array(freqData.length);
+  for (let i = 0; i < freqData.length; i++) {
+    const f = i * binHz;
+    aWeightDb[i] = f < 10 ? -100 : aWeight(f);
+    aWeightLin[i] = Math.pow(10, aWeightDb[i] / 10);
+  }
+  document.getElementById('vSr').textContent = `${audioCtx.sampleRate} Гц · N = ${analyser.fftSize} · Δf = ${fmt(binHz, 2)} Гц`;
+  document.getElementById('vOffset').textContent = '+' + fmt(calibOffset) + ' дБ';
+  fastPow = 0; leqEnergy = 0; leqTime = 0; lmax = -Infinity; lastT = performance.now(); history.length = 0;
+  document.getElementById('btnCalib').disabled = false;
+  document.getElementById('protoStart').disabled = false;
+  document.getElementById('btnAddMap').disabled = false;
+  const b = document.getElementById('btnMic'); b.innerHTML = '■ Талдауды тоқтату'; b.classList.remove('btn-primary'); b.classList.add('btn-danger');
+  loop();
+}
+function stopMic() {
+  cancelAnimationFrame(rafId);
+  if (micStream) micStream.getTracks().forEach(t => t.stop());
+  if (audioCtx) audioCtx.close();
+  audioCtx = analyser = micStream = null;
+  document.getElementById('btnCalib').disabled = true;
+  document.getElementById('protoStart').disabled = true;
+  const b = document.getElementById('btnMic'); b.innerHTML = '▶ Акустикалық талдауды бастау'; b.classList.add('btn-primary'); b.classList.remove('btn-danger');
+  document.getElementById('meterStatus').className = 'mt-2 badge b-green'; document.getElementById('meterStatus').textContent = 'Тоқтатылды';
+}
+document.getElementById('btnMic').addEventListener('click', () => (audioCtx ? stopMic() : startMic()));
+
+function loop() {
+  rafId = requestAnimationFrame(loop);
+  if (!analyser) return;
+  const now = performance.now(), dt = Math.min((now - lastT) / 1000, 0.25); lastT = now;
+  analyser.getFloatFrequencyData(freqData);
+  analyser.getFloatTimeDomainData(timeData);
+  const sr = audioCtx.sampleRate, binHz = sr / analyser.fftSize;
+  const iMin = Math.ceil(FMIN / binHz), iMax = Math.min(freqData.length - 1, Math.floor(FMAX / binHz));
+
+  // --- A-түзетілген энергетикалық қосынды ---
+  let pA = 0, pBand = 0, pTot = 0, peakDb = -Infinity, peakF = 0;
+  for (let i = iMin; i <= iMax; i++) {
+    const v = freqData[i]; if (!isFinite(v)) continue;
+    const p = Math.pow(10, v / 10);
+    const pa = p * aWeightLin[i];
+    pA += pa; pTot += p;
+    const f = i * binHz;
+    if (f >= 1000 && f <= 4000) pBand += pa;
+    if (v + aWeightDb[i] > peakDb) { peakDb = v + aWeightDb[i]; peakF = f; }
+  }
+  const dBFS_A = 10 * lg(pA / ENBW + 1e-20);
+  // --- Түзетусіз RMS (уақыттық облыс) ---
+  let rms = 0; for (let i = 0; i < timeData.length; i++) rms += timeData[i] * timeData[i];
+  rms = Math.sqrt(rms / timeData.length);
+  const dBFS_Z = 20 * lg(rms + 1e-12) + 3.01; // синусоида толық шкала = 0 dBFS
+
+  const LAinst = dBFS_A + calibOffset;
+  const LZ = dBFS_Z + calibOffset;
+  // Fast уақыттық салмақтау (τ = 125 мс)
+  const pInst = Math.pow(10, LAinst / 10);
+  const a = 1 - Math.exp(-dt / 0.125);
+  fastPow = fastPow ? fastPow + a * (pInst - fastPow) : pInst;
+  const LAF = 10 * lg(fastPow);
+  leqEnergy += pInst * dt; leqTime += dt;
+  const Leq = 10 * lg(leqEnergy / leqTime);
+  if (leqTime > 0.5) lmax = Math.max(lmax, LAF);
+  lastLA = Leq;
+
+  if (calibrating) calibAcc.push(Math.pow(10, dBFS_A / 10));
+  if (PROTO.active) { PROTO.energy += pInst * dt; PROTO.time += dt; if (PROTO.time > 0.5) PROTO.max = Math.max(PROTO.max, LAF); }
+
+  // --- UI ---
+  const shown = clamp(LAF, 0, 130);
+  document.getElementById('meterVal').textContent = fmt(shown);
+  document.getElementById('meterArc').setAttribute('stroke-dashoffset', 527.8 * (1 - clamp((shown - 20) / 90, 0, 1)));
+  const st = document.getElementById('meterStatus');
+  const c = levelClass(LAF); st.className = 'mt-2 badge b-' + c;
+  st.textContent = c === 'red' ? 'Қауіпті деңгей' : c === 'yellow' ? 'Орташа қауіп' : 'Қауіпсіз';
+  document.getElementById('vLeq').textContent = fmt(Leq) + ' дБА';
+  document.getElementById('vLmax').textContent = isFinite(lmax) ? fmt(lmax) + ' дБА' : '—';
+  document.getElementById('vLz').textContent = fmt(LZ) + ' дБ';
+  document.getElementById('vPeak').textContent = peakF >= 1000 ? fmt(peakF / 1000, 2) + ' кГц' : fmt(peakF, 0) + ' Гц';
+  document.getElementById('vBand').textContent = fmt(100 * pBand / (pA + 1e-30), 0) + '%';
+
+  // --- Спектр ---
+  const S = fitCanvas(specCanvas), ctx = specCanvas.getContext('2d');
+  drawSpecGrid(ctx, S.w, S.h, S.dpr);
+  const step = 3 * S.dpr, top = 20 * S.dpr, bottom = S.h - 16 * S.dpr;
+  const grad = ctx.createLinearGradient(0, bottom, 0, top);
+  grad.addColorStop(0, '#0891b2'); grad.addColorStop(0.5, '#22d3ee'); grad.addColorStop(0.8, '#e879f9'); grad.addColorStop(1, '#ffffff');
+  ctx.fillStyle = grad;
+  ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 8 * S.dpr;
+  for (let x = 0; x < S.w; x += step) {
+    const f1 = xf(x, S.w), f2 = xf(x + step, S.w);
+    let i1 = Math.floor(f1 / binHz), i2 = Math.max(i1, Math.floor(f2 / binHz));
+    if (i1 >= freqData.length) break;
+    let m = -Infinity; for (let i = i1; i <= Math.min(i2, freqData.length - 1); i++) m = Math.max(m, freqData[i]);
+    const spl = m + calibOffset - 10 * lg(ENBW);   // жолақтағы шамамен алынған дБ
+    const hgt = clamp(spl / 100, 0, 1) * (bottom - top);
+    ctx.fillRect(x, bottom - hgt, step - 1 * S.dpr, hgt);
+  }
+  ctx.shadowBlur = 0;
+  if (document.getElementById('showAcurve').checked) {
+    ctx.strokeStyle = '#a3e635'; ctx.lineWidth = 1.5 * S.dpr; ctx.setLineDash([5 * S.dpr, 4 * S.dpr]); ctx.beginPath();
+    for (let x = 0; x < S.w; x += 2) {
+      const y = top + (-aWeight(xf(x, S.w)) / 60) * (bottom - top) * 0.6;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#a3e635'; ctx.font = `${10 * S.dpr}px JetBrains Mono`; ctx.fillText('A(f) түзету қисығы', S.w - 130 * S.dpr, top + 12 * S.dpr);
+  }
+
+  // --- Спектрограмма (waterfall) ---
+  const W = fitCanvas(wfCanvas), wctx = wfCanvas.getContext('2d');
+  const col = 2 * W.dpr;
+  wctx.drawImage(wfCanvas, -col, 0);
+  for (let y = 0; y < W.h; y += 2) {
+    const f = FMIN * Math.pow(FMAX / FMIN, 1 - y / W.h);
+    const i = Math.min(freqData.length - 1, Math.round(f / binHz));
+    const spl = freqData[i] + calibOffset - 10 * lg(ENBW);
+    wctx.fillStyle = heatColor((spl - 0) / 85);
+    wctx.fillRect(W.w - col, y, col, 2);
+  }
+
+  // --- Тарих ---
+  history.push({ t: now, v: LAF });
+  while (history.length && now - history[0].t > 60000) history.shift();
+  const H = fitCanvas(histCanvas), hctx = histCanvas.getContext('2d');
+  hctx.fillStyle = '#03050b'; hctx.fillRect(0, 0, H.w, H.h);
+  const yOf = v => H.h - clamp((v - 20) / 90, 0, 1) * H.h;
+  hctx.strokeStyle = 'rgba(250,204,21,.6)'; hctx.setLineDash([4, 4]); hctx.beginPath(); hctx.moveTo(0, yOf(55)); hctx.lineTo(H.w, yOf(55)); hctx.stroke();
+  hctx.strokeStyle = 'rgba(239,68,68,.6)'; hctx.beginPath(); hctx.moveTo(0, yOf(70)); hctx.lineTo(H.w, yOf(70)); hctx.stroke(); hctx.setLineDash([]);
+  hctx.fillStyle = '#94a3b8'; hctx.font = `${10 * H.dpr}px JetBrains Mono`;
+  hctx.fillText('55', 4, yOf(55) - 3); hctx.fillText('70', 4, yOf(70) - 3);
+  hctx.strokeStyle = '#22d3ee'; hctx.lineWidth = 2 * H.dpr; hctx.beginPath();
+  history.forEach((p, k) => { const x = H.w - (now - p.t) / 60000 * H.w; k ? hctx.lineTo(x, yOf(p.v)) : hctx.moveTo(x, yOf(p.v)); });
+  hctx.stroke();
+}
+
+/* ---------- Өлшеу хаттамасы: 60 секундтық LAeq ---------- */
+const PROTO = { active: false, energy: 0, time: 0, max: -Infinity, timer: null };
+let PROTO_ROWS = load('acousticity_protocol', []);
+const energyMean = (arr) => 10 * lg(arr.reduce((s, v) => s + Math.pow(10, v / 10), 0) / arr.length);
+function renderProto() {
+  const tb = document.getElementById('protoRows');
+  tb.innerHTML = PROTO_ROWS.map((r, i) => `<tr class="border-b border-[#131c36]">
+    <td class="py-1.5 pr-2">${i + 1}</td><td class="pr-2 font-sans">${r.point}</td><td class="pr-2">${r.time}</td>
+    <td class="text-right pr-2 font-bold" style="color:${levelColor(r.laeq)}">${fmt(r.laeq)}</td><td class="text-right pr-2">${fmt(r.lmax)}</td>
+    <td class="text-right pr-2">${r.cars === '' ? '—' : r.cars}</td><td class="pr-2 font-sans text-slate-400">${r.note || ''}</td>
+    <td><button data-del="${i}" class="text-red-400 hover:text-red-300" title="Өшіру">✕</button></td></tr>`).join('');
+  tb.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { PROTO_ROWS.splice(+b.dataset.del, 1); store('acousticity_protocol', PROTO_ROWS); renderProto(); });
+  const groups = {};
+  PROTO_ROWS.forEach(r => (groups[r.point] = groups[r.point] || []).push(r.laeq));
+  const keys = Object.keys(groups);
+  document.getElementById('protoSummary').innerHTML = keys.length ? '<ul class="space-y-1">' + keys.map(k => {
+    const a = groups[k], m = energyMean(a), spread = Math.max(...a) - Math.min(...a);
+    const st = a.length < 3 ? `<span class="text-yellow-300">тағы ${3 - a.length} өлшем қажет</span>` : spread <= 3 ? '<span class="text-green-400">тұрақты ✔</span>' : `<span class="text-yellow-300">ауытқу ${fmt(spread)} дБ — тағы өлшеңіз</span>`;
+    return `<li><b>${k}</b>: L<sub>орт</sub> = <b class="mono" style="color:${levelColor(m)}">${fmt(m)} дБА</b> · n = ${a.length} · ${st}</li>`;
+  }).join('') + '</ul>' : 'Әзірге өлшем жоқ.';
+  updateDbStatus();
+}
+document.getElementById('protoStart').addEventListener('click', () => {
+  if (!analyser || PROTO.active) return;
+  const point = document.getElementById('protoPoint').value.trim();
+  if (!point) { toast('Алдымен өлшеу нүктесінің атын жазыңыз немесе тізімнен таңдаңыз.'); document.getElementById('protoPoint').focus(); return; }
+  Object.assign(PROTO, { active: true, energy: 0, time: 0, max: -Infinity });
+  const btn = document.getElementById('protoStart'); btn.disabled = true;
+  const st = document.getElementById('protoStatus');
+  let left = 60;
+  const tick = () => {
+    const cur = PROTO.time > 0 ? 10 * lg(PROTO.energy / PROTO.time) : NaN;
+    st.innerHTML = `<span class="text-cyan-300 font-bold mono text-lg">⏱ ${left} с</span> · ${point} · ағымдағы L<sub>Aeq</sub> = <b class="mono">${fmt(cur)}</b> дБА — сөйлемеңіз, телефонды қозғалтпаңыз`;
+  };
+  tick();
+  PROTO.timer = setInterval(() => {
+    left--; tick();
+    if (left <= 0) {
+      clearInterval(PROTO.timer); PROTO.active = false; btn.disabled = !analyser;
+      if (!PROTO.time) { st.textContent = 'Өлшем сәтсіз: микрофон сигналы болмады. Қайталап көріңіз.'; return; }
+      const laeq = 10 * lg(PROTO.energy / PROTO.time);
+      const row = {
+        point, time: new Date().toLocaleString('kk-KZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+        laeq: Math.round(laeq * 10) / 10, lmax: Math.round(PROTO.max * 10) / 10, cars: document.getElementById('protoCars').value,
+        note: document.getElementById('protoNote').value.trim(), offset: Math.round(calibOffset * 10) / 10
+      };
+      PROTO_ROWS.push(row); store('acousticity_protocol', PROTO_ROWS); renderProto();
+      const n = PROTO_ROWS.filter(r => r.point === point).length;
+      st.innerHTML = `✔ Жазылды: <b>${point}</b> — L<sub>Aeq</sub> = <b class="mono" style="color:${levelColor(laeq)}">${fmt(laeq)} дБА</b>. Бұл нүктедегі ${n}-өлшем. ${n < 3 ? 'Тағы бір рет басыңыз.' : 'Бұл нүкте дайын, келесі нүктеге өтіңіз.'}`;
+      document.getElementById('protoCars').value = '';
+      toast(`✔ ${point}: ${fmt(laeq)} дБА хаттамаға жазылды`);
+    }
+  }, 1000);
+});
+document.getElementById('protoCsv').addEventListener('click', () => {
+  if (!PROTO_ROWS.length) { toast('Хаттама бос.'); return; }
+  const head = ['№', 'Нүкте', 'Уақыт', 'LAeq, дБА', 'LAmax, дБА', 'Көлік/мин', 'Ескерту', 'Калибрлеу ығысуы, дБ'];
+  const q = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+  const c = (v) => String(v).replace('.', ',');
+  const lines = [head.map(q).join(';')].concat(PROTO_ROWS.map((r, i) => [i + 1, r.point, r.time, c(r.laeq), c(r.lmax), r.cars, r.note, c(r.offset)].map(q).join(';')));
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'olshem_hattamasy_' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+});
+document.getElementById('protoClear').addEventListener('click', () => {
+  if (!PROTO_ROWS.length) return;
+  if (!window.confirm('Барлық өлшемдер өшірілсін бе? Алдымен CSV-ге сақтап алыңыз.')) return;
+  PROTO_ROWS = []; store('acousticity_protocol', PROTO_ROWS); renderProto();
+});
+renderProto();
+
+/* Калибрлеу */
+document.getElementById('btnCalib').addEventListener('click', () => {
+  if (!analyser || calibrating) return;
+  if (!window.confirm('Калибрлеу ТЕК тыныш бөлмеде (≈30 дБА: терезе жабық, техника өшірулі) жасалады.\n\nКөшеде немесе шулы жерде баспаңыз — әйтпесе барлық кейінгі өлшемдер қате (тым төмен) шығады.\n\nҚазір тыныш бөлмедесіз бе?')) return;
+  calibrating = true; calibAcc = [];
+  const box = document.getElementById('calibBox'); box.classList.remove('hidden');
+  let n = 3; document.getElementById('calibCount').textContent = n;
+  const iv = setInterval(() => {
+    n--; document.getElementById('calibCount').textContent = n;
+    if (n <= 0) {
+      clearInterval(iv); calibrating = false; box.classList.add('hidden');
+      if (!calibAcc.length) return;
+      const meanDbfs = 10 * lg(calibAcc.reduce((s, v) => s + v, 0) / calibAcc.length);
+      calibOffset = 30 - meanDbfs;
+      store('acousticity_offset', calibOffset); updateDbStatus();
+      fastPow = 0; leqEnergy = 0; leqTime = 0; lmax = -Infinity;
+      document.getElementById('vOffset').textContent = (calibOffset >= 0 ? '+' : '') + fmt(calibOffset) + ' дБ';
+      store('acousticity_calib_time', new Date().toLocaleString('kk-KZ'));
+      toast(`✔ Калибрлеу аяқталды. Микрофонның ығысуы: <b>${fmt(calibOffset)} дБ</b>. Тыныш бөлме деңгейі 30 дБА деп қабылданды.`);
+    }
+  }, 1000);
+});
+
+/* Краудсенсинг: нәтижені картаға қосу */
+document.getElementById('btnAddMap').addEventListener('click', () => {
+  if (!isFinite(lastLA)) { toast('Алдымен өлшеу жүргізіңіз.'); return; }
+  const value = Math.round(lastLA * 10) / 10;
+  const finish = (lat, lng, src) => {
+    const o = {
+      id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+      name: 'Краудсенсинг өлшемі #' + (CROWD.length + 1), type: 'crowd', lat, lng, db: value,
+      extra: `<div style="font-size:12px;color:#f0abfc;font-family:JetBrains Mono">L<sub>Aeq</sub> өлшемі · ${new Date().toLocaleString('kk-KZ')}<br>Орны: ${src}</div>`
+    };
+    CROWD.push(o); store('acousticity_crowd', CROWD); renderCrowd(); updateKPI(); updateBarChart();
+    document.getElementById('m1').scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => { map.flyTo([lat, lng], 15); }, 400);
+    toast(`✔ ${fmt(value)} дБА өлшемі картаға енгізілді (${src}).`);
+  };
+  const fallback = () => {
+    if (lastClick) finish(lastClick.lat, lastClick.lng, 'картада соңғы басылған нүкте');
+    else { const c = map.getCenter(); finish(c.lat, c.lng, 'карта орталығы'); }
+  };
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      p => finish(p.coords.latitude, p.coords.longitude, 'GPS геолокация'),
+      fallback, { enableHighAccuracy: true, timeout: 6000, maximumAge: 30000 });
+  } else fallback();
+});
+
+/* ============================================================
+   3-МОДУЛЬ: ISO 9613-2 КАЛЬКУЛЯТОРЫ
+   ============================================================ */
+const qR = document.getElementById('qRange'), dR = document.getElementById('dRange');
+const gS = document.getElementById('groundSel'), bC = document.getElementById('barChk'), wS = document.getElementById('winSel');
+function groundAtt(type, d) {
+  if (type === 'hard') return 0;
+  if (type === 'trees') return 6;
+  // ISO 9613-2, 7.3.2-тармақ, (10) теңдеу: Agr = 4,8 − (2hm/d)·(17 + 300/d) ≥ 0, hm = 1,5 м
+  const hm = 1.5;
+  return Math.max(0, 4.8 - (2 * hm / d) * (17 + 300 / d));
+}
+function isoModel(q, d, ground, bar) {
+  const L0 = roadEmission(q);
+  const Adiv = 10 * lg(d / 10);
+  const Aatm = ALPHA * d / 1000;
+  const Agr = groundAtt(ground, d);
+  const Abar = bar ? 10 : 0;
+  return { L0, Adiv, Aatm, Agr, Abar, Leq: L0 - Adiv - Aatm - Agr - Abar };
+}
+let distChart, lastIso = null;
+function updateISO() {
+  const q = +qR.value, d = +dR.value, g = gS.value, bar = bC.checked, win = +wS.value;
+  document.getElementById('qVal').textContent = q; document.getElementById('dVal').textContent = d;
+  const r = isoModel(q, d, g, bar); lastIso = r;
+  const indoor = r.Leq - win;
+  document.getElementById('isoFormula').innerHTML =
+    `L<sub>eq</sub> = L<sub>0</sub> − A<sub>div</sub> − A<sub>atm</sub> − A<sub>gr</sub> − A<sub>bar</sub><br>
+     L<sub>eq</sub> = <span class="text-white">${fmt(r.L0)}</span> − <span class="text-white">${fmt(r.Adiv)}</span> − <span class="text-white">${fmt(r.Aatm, 2)}</span> − <span class="text-white">${fmt(r.Agr)}</span> − <span class="text-white">${fmt(r.Abar)}</span> = <b style="color:${levelColor(r.Leq)}">${fmt(r.Leq)} дБА</b><br>
+     <span class="text-slate-500 text-xs">L₀ = 10·lg(${q}) + 42 · A<sub>div</sub> = 10·lg(${d}/10) · A<sub>atm</sub> = ${ALPHA}·${d}/1000 · A<sub>gr</sub>: ${gS.options[gS.selectedIndex].text.split('(')[0].trim()} · A<sub>bar</sub>: ${bar ? 'ғимарат экраны' : 'экран жоқ'}</span>`;
+  const leqEl = document.getElementById('isoLeq'); leqEl.textContent = fmt(r.Leq); leqEl.style.color = levelColor(r.Leq);
+  document.getElementById('isoBadge').innerHTML = levelBadge(r.Leq);
+  const ind = document.getElementById('isoIndoor'); ind.textContent = fmt(indoor); ind.style.color = indoor > 40 ? '#f87171' : '#4ade80';
+  const att = attentionDrop(r.Leq), mem = memoryDrop(r.Leq);
+  document.getElementById('isoAtt').textContent = fmt(att, 0) + '%'; document.getElementById('isoAttBar').style.width = (att / 60 * 100) + '%';
+  document.getElementById('isoMem').textContent = fmt(mem, 0) + '%'; document.getElementById('isoMemBar').style.width = (mem / 45 * 100) + '%';
+
+  const comps = [['A<sub>div</sub> — геометриялық таралу', r.Adiv, '#22d3ee'], ['A<sub>atm</sub> — атмосфералық жұтылу', r.Aatm, '#a3e635'],
+    ['A<sub>gr</sub> — жер бетінің әсері', r.Agr, '#facc15'], ['A<sub>bar</sub> — экрандау', r.Abar, '#e879f9']];
+  const mx = Math.max(1, ...comps.map(c => c[1]));
+  document.getElementById('attnBars').innerHTML = comps.map(c => `
+    <div><div class="flex justify-between"><span>${c[0]}</span><span class="mono">−${fmt(c[1], 2)} дБ</span></div>
+    <div class="w-full bg-slate-800 rounded h-2"><div class="h-2 rounded" style="width:${c[1] / mx * 100}%;background:${c[2]};box-shadow:0 0 8px ${c[2]}"></div></div></div>`).join('');
+
+  // Нормаға жету қашықтығы (бисекция)
+  let lo = 10, hi = 5000, dn = null;
+  if (isoModel(q, 10, g, bar).Leq <= NORM) dn = 10;
+  else if (isoModel(q, hi, g, bar).Leq > NORM) dn = null;
+  else { for (let k = 0; k < 50; k++) { const mid = (lo + hi) / 2; isoModel(q, mid, g, bar).Leq > NORM ? lo = mid : hi = mid; } dn = hi; }
+  document.getElementById('normDist').innerHTML = dn === null
+    ? '55 дБА нормасына 5 км ішінде жетпейді — міндетті түрде экран қажет.'
+    : `55 дБА нормасына жету қашықтығы: <b class="mono text-cyan-300">${fmt(dn, 0)} м</b>. ${d < dn ? `<span class="text-red-300">Мектеп ${fmt(dn - d, 0)} м жақын орналасқан.</span>` : '<span class="text-green-300">Мектеп қауіпсіз аймақта.</span>'}`;
+
+  // Қисық
+  const xs = [], ys = [];
+  for (let x = 10; x <= 600; x += 10) { xs.push(x); ys.push(+isoModel(q, x, g, bar).Leq.toFixed(2)); }
+  if (!distChart) {
+    distChart = new Chart(document.getElementById('distChart'), {
+      type: 'line',
+      data: { labels: xs, datasets: [
+        { label: 'Leq(d), дБА', data: ys, borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,.12)', fill: true, tension: .3, pointRadius: 0, borderWidth: 2 },
+        { label: 'Норма 55 дБА', data: xs.map(() => NORM), borderColor: '#facc15', borderDash: [6, 6], pointRadius: 0, borderWidth: 1.5 },
+        { label: 'Мектеп', data: xs.map(x => x === Math.round(d / 10) * 10 ? r.Leq : null), borderColor: '#e879f9', backgroundColor: '#e879f9', pointRadius: 7, showLine: false }
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+        scales: { x: { title: { display: true, text: 'Қашықтық, м' }, ticks: { maxTicksLimit: 8 } }, y: { title: { display: true, text: 'дБА' } } },
+        plugins: { legend: { labels: { boxWidth: 12 } } } }
+    });
+  } else {
+    distChart.data.labels = xs; distChart.data.datasets[0].data = ys; distChart.data.datasets[1].data = xs.map(() => NORM);
+    distChart.data.datasets[2].data = xs.map(x => x === Math.round(d / 10) * 10 ? r.Leq : null);
+    distChart.update();
+  }
+}
+
+/* ============================================================
+   4-МОДУЛЬ: ИНТЕРВЕНЦИЯ СИМУЛЯТОРЫ
+   ============================================================ */
+const baseR = document.getElementById('baseRange');
+const IV = [{ id: 'iv1', label: 'Жасыл белдеу', db: 6, color: '#a3e635' }, { id: 'iv2', label: 'Акустикалық экран', db: 12, color: '#22d3ee' }, { id: 'iv3', label: 'Дизайн-панельдер', db: 8, color: '#e879f9' }];
+let ivChart;
+function updateIV() {
+  const base = +baseR.value; document.getElementById('baseVal').textContent = fmt(base);
+  const labels = ['Бастапқы'], vals = [base], colors = [levelColor(base)];
+  let cur = base, total = 0;
+  IV.forEach(v => {
+    if (document.getElementById(v.id).checked) {
+      // Экрандау мен жер әсерінің жиынтығы ISO 9613-2 бойынша практикалық шекпен (25 дБ) шектеледі
+      const red = Math.min(v.db, 25 - total); total += red; cur -= red;
+      labels.push('+ ' + v.label); vals.push(+cur.toFixed(1)); colors.push(v.color);
+    }
+  });
+  labels.push('Қорытынды'); vals.push(+cur.toFixed(1)); colors.push(levelColor(cur));
+  const fin = document.getElementById('ivFinal'); fin.textContent = fmt(cur) + ' дБА'; fin.style.color = levelColor(cur);
+  document.getElementById('ivDelta').textContent = '−' + fmt(total) + ' дБ';
+  document.getElementById('ivEnergy').textContent = '−' + fmt(100 * (1 - Math.pow(10, -total / 10)), 0) + '%';
+  document.getElementById('ivVerdict').innerHTML = cur <= NORM
+    ? `<div class="p-3 rounded-xl bg-green-500/10 border border-green-500/40 text-green-300">✔ Санитариялық норма (55 дБА) қамтамасыз етілді. Болжамды зейін жоғалту: <b>${fmt(attentionDrop(cur), 0)}%</b> (бастапқы: ${fmt(attentionDrop(base), 0)}%).</div>`
+    : `<div class="p-3 rounded-xl bg-red-500/10 border border-red-500/40 text-red-300">✖ Нормаға дейін тағы <b>${fmt(cur - NORM)} дБ</b> төмендету қажет. Қосымша шешімдерді белсендіріңіз немесе мектептің құрылыс орнын қайта қарастырыңыз.</div>`;
+  if (!ivChart) {
+    ivChart = new Chart(document.getElementById('ivChart'), {
+      type: 'bar',
+      data: { labels, datasets: [
+        { type: 'bar', label: 'Шу деңгейі, дБА', data: vals, backgroundColor: colors.map(c => c + 'aa'), borderColor: colors, borderWidth: 2, borderRadius: 8 },
+        { type: 'line', label: 'СанПиН нормасы 55 дБА', data: labels.map(() => NORM), borderColor: '#facc15', borderDash: [6, 6], pointRadius: 0, borderWidth: 2 }
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 500, easing: 'easeOutQuart' },
+        scales: { y: { min: 30, max: 95, title: { display: true, text: 'дБА' } } } }
+    });
+  } else {
+    ivChart.data.labels = labels; ivChart.data.datasets[0].data = vals;
+    ivChart.data.datasets[0].backgroundColor = colors.map(c => c + 'aa'); ivChart.data.datasets[0].borderColor = colors;
+    ivChart.data.datasets[1].data = labels.map(() => NORM); ivChart.update();
+  }
+}
+baseR.addEventListener('input', updateIV);
+IV.forEach(v => document.getElementById(v.id).addEventListener('change', updateIV));
+document.getElementById('btnToM4').addEventListener('click', () => {
+  if (!lastIso) return;
+  baseR.value = clamp(Math.round(lastIso.Leq * 2) / 2, 50, 90); updateIV();
+  document.getElementById('m4').scrollIntoView({ behavior: 'smooth' });
+  toast(`ISO 9613-2 нәтижесі (${fmt(lastIso.Leq)} дБА) интервенция симуляторына жіберілді.`);
+});
+
+/* ---------- Биоакустикалық саунд-дизайн генераторы ---------- */
+let sgCtx = null, sgMaster = null, sgAnalyser = null, sgNodes = [], sgTimers = [], sgMode = 'pink', sgRaf = null, sgEnd = 0, sgTick = null;
+function makeNoiseBuffer(ctx, kind, seconds = 8) {
+  const len = ctx.sampleRate * seconds, buf = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0, last = 0;
+    for (let i = 0; i < len; i++) {
+      const w = Math.random() * 2 - 1;
+      if (kind === 'pink') { // Пол Келлеттің «pink noise» фильтрі
+        b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759;
+        b2 = 0.96900 * b2 + w * 0.1538520; b3 = 0.86650 * b3 + w * 0.3104856;
+        b4 = 0.55000 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.0168980;
+        d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11; b6 = w * 0.115926;
+      } else { // Броун шуы (интеграцияланған ақ шу)
+        last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5;
+      }
+    }
+    // Циклдік өткелді тегістеу (crossfade)
+    const fade = Math.floor(ctx.sampleRate * 0.05);
+    for (let i = 0; i < fade; i++) { const t = i / fade; d[i] = d[i] * t + d[len - fade + i] * (1 - t); }
+  }
+  return buf;
+}
+function noiseSource(kind) {
+  const s = sgCtx.createBufferSource(); s.buffer = makeNoiseBuffer(sgCtx, kind); s.loop = true; s.start(); sgNodes.push(s); return s;
+}
+function lfo(freq, depth, target) {
+  const o = sgCtx.createOscillator(), g = sgCtx.createGain(); o.frequency.value = freq; g.gain.value = depth;
+  o.connect(g); g.connect(target); o.start(); sgNodes.push(o, g); return o;
+}
+function chirp() { // Құс сайрауын синтездеу: жиілік модуляцияланған синусоида
+  if (!sgCtx) return;
+  const t0 = sgCtx.currentTime + 0.02, n = 2 + Math.floor(Math.random() * 4), base = 2200 + Math.random() * 1600;
+  const pan = sgCtx.createStereoPanner ? sgCtx.createStereoPanner() : null;
+  if (pan) { pan.pan.value = Math.random() * 1.6 - 0.8; pan.connect(sgMaster); }
+  for (let k = 0; k < n; k++) {
+    const o = sgCtx.createOscillator(), g = sgCtx.createGain(), t = t0 + k * (0.09 + Math.random() * 0.06);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(base, t);
+    o.frequency.exponentialRampToValueAtTime(base * (1.25 + Math.random() * 0.4), t + 0.05);
+    o.frequency.exponentialRampToValueAtTime(base * 0.9, t + 0.08);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.06, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.085);
+    o.connect(g); g.connect(pan || sgMaster); o.start(t); o.stop(t + 0.1);
+  }
+  sgTimers.push(setTimeout(chirp, 1200 + Math.random() * 3500));
+}
+function buildScene(mode) {
+  const out = sgCtx.createGain(); out.connect(sgMaster); sgNodes.push(out);
+  if (mode === 'pink') {
+    const s = noiseSource('pink'); const lp = sgCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 9000;
+    s.connect(lp); lp.connect(out); out.gain.value = 0.9; sgNodes.push(lp);
+  } else if (mode === 'brown') {
+    const s = noiseSource('brown'); const lp = sgCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+    const g = sgCtx.createGain(); g.gain.value = 0.85; s.connect(lp); lp.connect(g); g.connect(out); lfo(0.23, 0.12, g.gain); sgNodes.push(lp, g);
+  } else if (mode === 'ocean') {
+    const s = noiseSource('pink'); const lp = sgCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 600; lp.Q.value = 0.7;
+    const g = sgCtx.createGain(); g.gain.value = 0.55;
+    s.connect(lp); lp.connect(g); g.connect(out);
+    lfo(0.085, 450, lp.frequency); lfo(0.085, 0.45, g.gain); sgNodes.push(lp, g);
+  } else if (mode === 'forest') {
+    const s = noiseSource('pink'); const bp = sgCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = 0.5;
+    const g = sgCtx.createGain(); g.gain.value = 0.5; s.connect(bp); bp.connect(g); g.connect(out);
+    lfo(0.05, 300, bp.frequency); lfo(0.13, 0.25, g.gain); sgNodes.push(bp, g);
+    sgTimers.push(setTimeout(chirp, 600));
+  }
+}
+function sgClearScene() {
+  sgTimers.forEach(clearTimeout); sgTimers = [];
+  sgNodes.forEach(n => { try { n.stop && n.stop(); } catch (e) {} try { n.disconnect(); } catch (e) {} }); sgNodes = [];
+}
+function sgStart() {
+  if (!sgCtx) {
+    sgCtx = new (window.AudioContext || window.webkitAudioContext)();
+    sgMaster = sgCtx.createGain(); sgAnalyser = sgCtx.createAnalyser(); sgAnalyser.fftSize = 2048;
+    sgMaster.connect(sgAnalyser); sgAnalyser.connect(sgCtx.destination);
+  }
+  sgCtx.resume();
+  sgClearScene(); buildScene(sgMode);
+  const vol = +document.getElementById('sgVol').value / 100;
+  sgMaster.gain.cancelScheduledValues(sgCtx.currentTime);
+  sgMaster.gain.setValueAtTime(0.0001, sgCtx.currentTime);
+  sgMaster.gain.exponentialRampToValueAtTime(Math.max(vol, 0.0001), sgCtx.currentTime + 1.5);
+  sgEnd = Date.now() + (+document.getElementById('sgTimer').value) * 60000;
+  clearInterval(sgTick); sgTick = setInterval(sgCountdown, 250);
+  const st = document.getElementById('sgState'); st.className = 'badge b-yellow'; st.textContent = 'Ойнатылуда';
+  cancelAnimationFrame(sgRaf); sgDraw();
+}
+function sgStop(fade = 0.8) {
+  if (!sgCtx) return;
+  clearInterval(sgTick);
+  const t = sgCtx.currentTime;
+  sgMaster.gain.cancelScheduledValues(t); sgMaster.gain.setValueAtTime(Math.max(sgMaster.gain.value, 0.0001), t);
+  sgMaster.gain.exponentialRampToValueAtTime(0.0001, t + fade);
+  setTimeout(() => { sgClearScene(); cancelAnimationFrame(sgRaf); }, fade * 1000 + 60);
+  const st = document.getElementById('sgState'); st.className = 'badge b-green'; st.textContent = 'Тоқтатылған';
+}
+function sgCountdown() {
+  const left = Math.max(0, sgEnd - Date.now()), m = Math.floor(left / 60000), s = Math.floor(left / 1000) % 60;
+  document.getElementById('sgCountdown').textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  if (left <= 0) { sgStop(4); toast('⏰ Үзіліс аяқталды. Сабаққа сәттілік!'); }
+}
+function sgDraw() {
+  sgRaf = requestAnimationFrame(sgDraw);
+  const c = document.getElementById('sgCanvas'), S = fitCanvas(c), ctx = c.getContext('2d');
+  const data = new Uint8Array(sgAnalyser.frequencyBinCount); sgAnalyser.getByteFrequencyData(data);
+  const td = new Uint8Array(sgAnalyser.fftSize); sgAnalyser.getByteTimeDomainData(td);
+  ctx.fillStyle = 'rgba(3,5,11,.35)'; ctx.fillRect(0, 0, S.w, S.h);
+  const bars = 96, bw = S.w / bars;
+  for (let i = 0; i < bars; i++) {
+    const idx = Math.floor(Math.pow(i / bars, 2) * data.length * 0.5);
+    const v = data[idx] / 255, h = v * S.h * 0.9;
+    ctx.fillStyle = `hsla(${160 + i * 1.6},90%,${45 + v * 25}%,.85)`;
+    ctx.fillRect(i * bw, S.h - h, bw - 2, h);
+  }
+  ctx.strokeStyle = '#a3e635'; ctx.lineWidth = 1.5 * S.dpr; ctx.beginPath();
+  for (let i = 0; i < td.length; i += 4) { const x = i / td.length * S.w, y = td[i] / 255 * S.h; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.stroke();
+}
+document.querySelectorAll('#sgModes button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#sgModes button').forEach(x => x.classList.remove('active')); b.classList.add('active');
+  sgMode = b.dataset.mode;
+  if (sgCtx && sgNodes.length) { sgClearScene(); buildScene(sgMode); }
+}));
+document.getElementById('sgPlay').addEventListener('click', sgStart);
+document.getElementById('sgStop').addEventListener('click', () => sgStop());
+document.getElementById('sgVol').addEventListener('input', e => {
+  document.getElementById('sgVolVal').textContent = e.target.value + '%';
+  if (sgCtx && sgNodes.length) sgMaster.gain.setTargetAtTime(Math.max(+e.target.value / 100, 0.0001), sgCtx.currentTime, 0.1);
+});
+document.getElementById('sgTimer').addEventListener('input', e => {
+  document.getElementById('sgTimerVal').textContent = e.target.value + ' мин';
+  if (!(sgCtx && sgNodes.length)) document.getElementById('sgCountdown').textContent = String(e.target.value).padStart(2, '0') + ':00';
+  else sgEnd = Date.now() + (+e.target.value) * 60000;
+});
+
+/* ============================================================
+   5-МОДУЛЬ: АНАЛИТИКА
+   ============================================================ */
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = 'rgba(148,163,184,.12)';
+Chart.defaults.font.family = 'Inter';
+
+let barChart;
+function barData() {
+  let arr = POINTS.map(p => ({ n: p.name, v: p.db })).concat(CROWD.map(c => ({ n: c.name, v: c.db })));
+  if (document.getElementById('sortSel').value === 'desc') arr = arr.slice().sort((a, b) => b.v - a.v);
+  return arr;
+}
+function updateBarChart() {
+  const arr = barData();
+  const labels = arr.map(a => a.n.length > 26 ? a.n.slice(0, 25) + '…' : a.n);
+  const vals = arr.map(a => a.v), cols = vals.map(levelColor);
+  if (!barChart) {
+    barChart = new Chart(document.getElementById('barChart'), {
+      type: 'bar',
+      data: { labels, datasets: [
+        { type: 'bar', label: 'Шу деңгейі, дБА', data: vals, backgroundColor: cols.map(c => c + '99'), borderColor: cols, borderWidth: 1.5, borderRadius: 5 },
+        { type: 'line', label: 'ҚР СанПиН нормасы — 55 дБА', data: vals.map(() => NORM), borderColor: '#facc15', borderDash: [6, 6], pointRadius: 0, borderWidth: 2 },
+        { type: 'line', label: 'Қауіпті шек — 70 дБА', data: vals.map(() => 70), borderColor: '#ef4444', borderDash: [3, 5], pointRadius: 0, borderWidth: 1.5 }
+      ] },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        scales: { x: { min: 30, max: 90, title: { display: true, text: 'дБА' } }, y: { ticks: { font: { size: 10 } } } },
+        plugins: { tooltip: { callbacks: { afterLabel: (c) => c.datasetIndex === 0 ? `Нормадан ауытқу: ${c.raw - NORM > 0 ? '+' : ''}${fmt(c.raw - NORM)} дБ` : '' } } } }
+    });
+  } else {
+    barChart.data.labels = labels; barChart.data.datasets[0].data = vals;
+    barChart.data.datasets[0].backgroundColor = cols.map(c => c + '99'); barChart.data.datasets[0].borderColor = cols;
+    barChart.data.datasets[1].data = vals.map(() => NORM); barChart.data.datasets[2].data = vals.map(() => 70);
+    barChart.update();
+  }
+}
+document.getElementById('sortSel').addEventListener('change', updateBarChart);
+
+/* ============================================================
+   БУРДОН ЗЕЙІН ТЕСТІ + КОРРЕЛЯЦИЯЛЫҚ ТАЛДАУ (тек нақты нәтижелер)
+   ============================================================ */
+let BOURDON = load('acousticity_bourdon', []);
+let corrChart = null;
+
+/* Статистика: регрессия, орташа, стандартты ауытқу, Уэлч t-тесті */
+function regress(pts) {
+  const n = pts.length, mx = pts.reduce((s, p) => s + p.x, 0) / n, my = pts.reduce((s, p) => s + p.y, 0) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  pts.forEach(p => { sxy += (p.x - mx) * (p.y - my); sxx += (p.x - mx) ** 2; syy += (p.y - my) ** 2; });
+  const b = sxx ? sxy / sxx : NaN, a = my - b * mx, r = (sxx && syy) ? sxy / Math.sqrt(sxx * syy) : NaN;
+  return { a, b, r, n };
+}
+const mean = (a) => a.reduce((s, v) => s + v, 0) / a.length;
+const sd = (a) => { if (a.length < 2) return NaN; const m = mean(a); return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1)); };
+// Толық емес бета-функция (Numerical Recipes) → Стьюдент үлестірімінің p-мәні
+function betacf(a, b, x) {
+  const MAXIT = 200, EPS = 3e-12, FPMIN = 1e-300;
+  let qab = a + b, qap = a + 1, qam = a - 1, c = 1, d = 1 - qab * x / qap;
+  if (Math.abs(d) < FPMIN) d = FPMIN; d = 1 / d; let h = d;
+  for (let m = 1; m <= MAXIT; m++) {
+    const m2 = 2 * m; let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN; c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN; d = 1 / d; h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN; c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN; d = 1 / d;
+    const del = d * c; h *= del; if (Math.abs(del - 1) < EPS) break;
+  }
+  return h;
+}
+function gammaln(x) {
+  const cof = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+  let y = x, tmp = x + 5.5; tmp -= (x + 0.5) * Math.log(tmp); let ser = 1.000000000190015;
+  for (let j = 0; j < 6; j++) ser += cof[j] / ++y;
+  return -tmp + Math.log(2.5066282746310005 * ser / x);
+}
+function betai(a, b, x) {
+  if (x <= 0) return 0; if (x >= 1) return 1;
+  const bt = Math.exp(gammaln(a + b) - gammaln(a) - gammaln(b) + a * Math.log(x) + b * Math.log(1 - x));
+  return x < (a + 1) / (a + b + 2) ? bt * betacf(a, b, x) / a : 1 - bt * betacf(b, a, 1 - x) / b;
+}
+function welch(a, b) {
+  if (a.length < 2 || b.length < 2) return null;
+  const va = sd(a) ** 2 / a.length, vb = sd(b) ** 2 / b.length;
+  if (va + vb === 0) return null;
+  const t = (mean(a) - mean(b)) / Math.sqrt(va + vb);
+  const df = (va + vb) ** 2 / (va ** 2 / (a.length - 1) + vb ** 2 / (b.length - 1));
+  const p = betai(df / 2, 0.5, df / (df + t * t)); // екі жақты p
+  return { t, df, p };
+}
+function bourdonStats() {
+  const q = BOURDON.filter(r => r.mode === 'quiet'), n = BOURDON.filter(r => r.mode === 'noise');
+  const pts = BOURDON.map(r => ({ x: r.level, y: r.errors }));
+  const xs = new Set(pts.map(p => p.x));
+  const reg = pts.length >= 3 && xs.size >= 2 ? regress(pts) : null;
+  return { q, n, reg, tErr: welch(n.map(r => r.errors), q.map(r => r.errors)), tAcc: welch(n.map(r => r.accuracy), q.map(r => r.accuracy)) };
+}
+
+/* ---------- Далалық өлшемдер кестесі ---------- */
+function renderMeasTable() {
+  const tb = document.getElementById('measRows'); if (!tb) return;
+  tb.innerHTML = POINTS.map((p, i) => `<tr>
+    <td class="mono">${i + 1}</td><td>${p.name}</td><td class="mono">${p.time}</td>
+    <td class="mono text-right font-bold" style="color:${levelColor(p.db)}">${fmt(p.db)}</td>
+    <td class="mono text-right">${fmt(p.lmax)}</td><td class="mono text-right">${p.lz != null ? fmt(p.lz) : '—'}</td>
+    <td class="mono">${p.peak || '—'}</td><td class="mono text-right">${p.band != null ? p.band : '—'}</td>
+    <td class="mono text-right">${p.offset == null ? '—' : (p.offset === 100 ? '<span class="text-yellow-300">+100,0 (әдепкі)</span>' : '+' + fmt(p.offset))}</td>
+    <td>${p.db > NORM ? `<span class="no">+${fmt(p.db - NORM)} дБ</span>` : '<span class="yes">нормада</span>'}</td></tr>`).join('');
+  const v = POINTS.map(p => p.db);
+  document.getElementById('measSummary').innerHTML = `Өлшеу нүктелері: <b>${v.length}</b> · Энергетикалық орташа: <b class="mono">${fmt(energyMean(v))} дБА</b> · Ең жоғары: <b class="mono">${fmt(Math.max(...v))} дБА</b> (${POINTS[v.indexOf(Math.max(...v))].name}) · Ең төмен: <b class="mono">${fmt(Math.min(...v))} дБА</b> · 55 дБА нормасынан асқан нүктелер: <b>${v.filter(x => x > NORM).length}</b>.`;
+}
+
+/* ---------- Корреляция графигі ---------- */
+function updateCorr() {
+  const st = bourdonStats(), pts = BOURDON.map(r => ({ x: r.level, y: r.errors, mode: r.mode }));
+  const reg = st.reg;
+  document.getElementById('corrInfo').innerHTML = BOURDON.length
+    ? `Деректер — осы құрылғыда өткізілген Бурдон тестінің нақты нәтижелері (n = ${BOURDON.length}: тыныш фон — ${st.q.length}, көлік шуы — ${st.n.length}). X осі — тест кезінде шумомермен тіркелген деңгей, Y осі — қателіктер саны (өткізіп алу + қате белгілеу).`
+    : 'Әзірге нәтиже жоқ. Төмендегі «Интерактивті Бурдон зейін тесті» бөлімінде тест өткізіңіз: әр нәтиже осы графикке автоматты түрде қосылады. Регрессия кемінде 3 нәтиже және екі түрлі шу деңгейі болғанда есептеледі.';
+  document.getElementById('statR').textContent = reg && isFinite(reg.r) ? fmt(reg.r, 3) : '—';
+  document.getElementById('statR2').textContent = reg && isFinite(reg.r) ? fmt(reg.r * reg.r, 3) : '—';
+  document.getElementById('statEq').textContent = reg && isFinite(reg.b) ? `y = ${fmt(reg.b, 3)}x ${reg.a >= 0 ? '+' : '−'} ${fmt(Math.abs(reg.a), 2)}` : 'n ≥ 3 қажет';
+  const maxY = Math.max(10, ...pts.map(p => p.y)) + 2;
+  const datasets = [
+    { type: 'scatter', label: 'Тыныш фон', data: pts.filter(p => p.mode === 'quiet'), backgroundColor: '#22c55ecc', pointRadius: 6, pointHoverRadius: 8 },
+    { type: 'scatter', label: 'Көлік шуы', data: pts.filter(p => p.mode === 'noise'), backgroundColor: '#ef4444cc', pointRadius: 6, pointHoverRadius: 8 },
+    { type: 'line', label: 'Норма 55 дБА', data: [{ x: 55, y: 0 }, { x: 55, y: maxY }], borderColor: '#facc15', borderDash: [6, 6], pointRadius: 0, borderWidth: 1.5 }
+  ];
+  if (reg && isFinite(reg.b)) datasets.splice(2, 0, { type: 'line', label: 'Сызықтық регрессия', data: [{ x: 35, y: reg.a + reg.b * 35 }, { x: 90, y: reg.a + reg.b * 90 }], borderColor: '#22d3ee', borderWidth: 2.5, pointRadius: 0 });
+  const data = { datasets };
+  if (!corrChart) {
+    corrChart = new Chart(document.getElementById('corrChart'), {
+      type: 'scatter', data,
+      options: { responsive: true, maintainAspectRatio: false,
+        scales: { x: { type: 'linear', min: 35, max: 90, title: { display: true, text: 'Тест кезіндегі шу деңгейі, дБА' } },
+                  y: { min: 0, suggestedMax: maxY, title: { display: true, text: 'Бурдон тестіндегі қателіктер саны' } } },
+        plugins: { tooltip: { callbacks: { label: (c) => c.raw && c.raw.mode ? `${fmt(c.raw.x)} дБА → ${c.raw.y} қате` : '' } } } }
+    });
+  } else { corrChart.data = data; corrChart.options.scales.y.suggestedMax = maxY; corrChart.update(); }
+}
+
+/* ---------- Көлік шуының синтезі (Web Audio API) ---------- */
+let traffic = null;
+function startTraffic(volume) {
+  stopTraffic(0);
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const master = ctx.createGain(); master.gain.value = 0.0001; master.connect(ctx.destination);
+  const timers = [], nodes = [];
+  const loop = (kind) => { const s = ctx.createBufferSource(); s.buffer = makeNoiseBuffer(ctx, kind, 6); s.loop = true; s.start(); nodes.push(s); return s; };
+  // 1) Шиналар мен қозғалтқыштардың төменгі жиілікті гуілі (броун шуы)
+  const rumble = loop('brown'), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380;
+  const rg = ctx.createGain(); rg.gain.value = 0.9; rumble.connect(lp); lp.connect(rg); rg.connect(master);
+  // 2) Өтіп бара жатқан көліктер: жолақты сүзгіден өткен қызғылт шу + қаттылық конверті + стерео қозғалыс
+  const hiss = loop('pink'), bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 0.6;
+  const pg = ctx.createGain(); pg.gain.value = 0.18;
+  const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+  hiss.connect(bp); bp.connect(pg); if (pan) { pg.connect(pan); pan.connect(master); } else pg.connect(master);
+  const passBy = () => {
+    const t = ctx.currentTime, dur = 2 + Math.random() * 2, peak = 0.6 + Math.random() * 0.6;
+    pg.gain.cancelScheduledValues(t); pg.gain.setTargetAtTime(peak, t, dur * 0.25); pg.gain.setTargetAtTime(0.18, t + dur * 0.6, dur * 0.3);
+    bp.frequency.setTargetAtTime(700 + Math.random() * 600, t, 0.5);
+    if (pan) { const dir = Math.random() < 0.5 ? -1 : 1; pan.pan.cancelScheduledValues(t); pan.pan.setValueAtTime(-dir, t); pan.pan.linearRampToValueAtTime(dir, t + dur); }
+    timers.push(setTimeout(passBy, 1200 + Math.random() * 2800));
+  };
+  passBy();
+  // 3) Дизель қозғалтқышының гармоникалық гуілі
+  const eng = ctx.createOscillator(); eng.type = 'sawtooth'; eng.frequency.value = 46;
+  const elp = ctx.createBiquadFilter(); elp.type = 'lowpass'; elp.frequency.value = 220;
+  const eg = ctx.createGain(); eg.gain.value = 0.07; eng.connect(elp); elp.connect(eg); eg.connect(master); eng.start(); nodes.push(eng);
+  const lfoO = ctx.createOscillator(), lfoG = ctx.createGain(); lfoO.frequency.value = 0.15; lfoG.gain.value = 6; lfoO.connect(lfoG); lfoG.connect(eng.frequency); lfoO.start(); nodes.push(lfoO);
+  // 4) Анда-санда естілетін көлік сигналы
+  const horn = () => {
+    const t = ctx.currentTime + 0.05, g = ctx.createGain(), f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 2500;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.07, t + 0.03); g.gain.setValueAtTime(0.07, t + 0.3); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+    [392, 494].forEach(fr => { const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = fr; o.connect(f); o.start(t); o.stop(t + 0.4); });
+    f.connect(g); g.connect(master);
+    timers.push(setTimeout(horn, 8000 + Math.random() * 9000));
+  };
+  timers.push(setTimeout(horn, 5000 + Math.random() * 5000));
+  master.gain.exponentialRampToValueAtTime(Math.max(volume, 0.0001), ctx.currentTime + 0.8);
+  traffic = { ctx, master, timers, nodes };
+}
+function stopTraffic(fade = 0.6) {
+  if (!traffic) return;
+  const tr = traffic; traffic = null;
+  tr.timers.forEach(clearTimeout);
+  try { const t = tr.ctx.currentTime; tr.master.gain.cancelScheduledValues(t); tr.master.gain.setValueAtTime(Math.max(tr.master.gain.value, 0.0001), t); tr.master.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(fade, 0.01)); } catch (e) {}
+  setTimeout(() => { try { tr.ctx.close(); } catch (e) {} }, fade * 1000 + 100);
+}
+
+/* ---------- Бурдон тесті ---------- */
+const BD = { rows: 10, cols: 14, targets: ['А', 'К'], duration: 30, running: false, cells: [], clicked: new Set(), timer: null, t0: 0, hitTimes: [] };
+const BD_LETTERS = ['А', 'К', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Х'];
+const BD_DISTRACT = BD_LETTERS.filter(l => !BD.targets.includes(l));
+function bdMode() { return document.querySelector('input[name="bdMode"]:checked').value; }
+function bdGenerate() {
+  BD.cells = [];
+  for (let i = 0; i < BD.rows * BD.cols; i++) {
+    BD.cells.push(Math.random() < 0.25 ? BD.targets[Math.random() < 0.5 ? 0 : 1] : BD_DISTRACT[Math.floor(Math.random() * BD_DISTRACT.length)]);
+  }
+  BD.clicked = new Set(); BD.hitTimes = [];
+  const g = document.getElementById('bdGrid');
+  g.style.gridTemplateColumns = `repeat(${BD.cols}, minmax(0, 1fr))`;
+  g.innerHTML = BD.cells.map((l, i) => `<button class="bd-cell" data-i="${i}">${l}</button>`).join('');
+  g.querySelectorAll('.bd-cell').forEach(b => b.addEventListener('click', () => {
+    if (!BD.running) return;
+    const i = +b.dataset.i;
+    if (BD.clicked.has(i)) { BD.clicked.delete(i); b.classList.remove('sel'); }
+    else { BD.clicked.add(i); b.classList.add('sel'); if (BD.targets.includes(BD.cells[i])) BD.hitTimes.push(performance.now() - BD.t0); }
+  }));
+}
+function bdSetStatus(html) { document.getElementById('bdStatus').innerHTML = html; }
+function bdStart() {
+  if (BD.running) return;
+  const level = num0(document.getElementById('bdLevel').value);
+  if (!(level >= 20 && level <= 120)) { toast('Тест кезіндегі шу деңгейін (20–120 дБА) енгізіңіз. Оны шумомермен өлшеңіз.'); return; }
+  const mode = bdMode();
+  bdGenerate();
+  const grid = document.getElementById('bdGrid'); grid.classList.add('blur');
+  document.getElementById('bdStart').disabled = true;
+  if (mode === 'noise') startTraffic(+document.getElementById('bdVol').value / 100);
+  let pre = 3;
+  bdSetStatus(`<span class="mono text-2xl text-cyan-300 font-bold">${pre}</span> · Дайындалыңыз… «А» және «К» әріптерін жол бойымен солдан оңға қарай іздеңіз.`);
+  const preT = setInterval(() => {
+    pre--;
+    if (pre > 0) { bdSetStatus(`<span class="mono text-2xl text-cyan-300 font-bold">${pre}</span> · Дайындалыңыз…`); return; }
+    clearInterval(preT);
+    grid.classList.remove('blur');
+    BD.running = true; BD.t0 = performance.now();
+    let left = BD.duration;
+    bdSetStatus(`<span class="mono text-2xl text-cyan-300 font-bold">⏱ ${left} с</span> · «А» және «К» әріптерін басыңыз`);
+    BD.timer = setInterval(() => {
+      left--;
+      bdSetStatus(`<span class="mono text-2xl ${left <= 5 ? 'text-red-400' : 'text-cyan-300'} font-bold">⏱ ${left} с</span> · «А» және «К» әріптерін басыңыз`);
+      if (left <= 0) bdFinish(level, mode);
+    }, 1000);
+  }, 1000);
+}
+function num0(v) { return parseFloat(String(v).replace(',', '.')); }
+function bdFinish(level, mode) {
+  clearInterval(BD.timer); BD.running = false; stopTraffic(1.2);
+  document.getElementById('bdStart').disabled = false;
+  const clicked = [...BD.clicked];
+  const viewed = clicked.length ? Math.max(...clicked) + 1 : 0;           // қаралған аймақ (соңғы белгіленген ұяшыққа дейін)
+  let hits = 0, fa = 0, om = 0;
+  for (let i = 0; i < viewed; i++) {
+    const isT = BD.targets.includes(BD.cells[i]), sel = BD.clicked.has(i);
+    if (isT && sel) hits++; else if (!isT && sel) fa++; else if (isT && !sel) om++;
+  }
+  const errors = fa + om;
+  const accuracy = hits + errors ? 100 * hits / (hits + errors) : 0;
+  const speed = viewed / BD.duration;
+  const rt = hits ? (BD.hitTimes.length ? (Math.max(...BD.hitTimes) / 1000) / BD.hitTimes.length : BD.duration / hits) : NaN;
+  // Нәтижені көрсету
+  document.querySelectorAll('#bdGrid .bd-cell').forEach(b => {
+    const i = +b.dataset.i, isT = BD.targets.includes(BD.cells[i]), sel = BD.clicked.has(i);
+    b.classList.remove('sel');
+    if (i >= viewed) b.classList.add('out');
+    else if (isT && sel) b.classList.add('hit');
+    else if (!isT && sel) b.classList.add('fa');
+    else if (isT && !sel) b.classList.add('om');
+  });
+  const row = {
+    id: 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+    ts: new Date().toLocaleString('kk-KZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+    participant: document.getElementById('bdWho').value.trim() || '—', mode, level: Math.round(level * 10) / 10,
+    hits, fa, om, errors, viewed, accuracy: Math.round(accuracy * 10) / 10, speed: Math.round(speed * 100) / 100,
+    rt: isFinite(rt) ? Math.round(rt * 100) / 100 : null
+  };
+  if (viewed < 10) {
+    bdSetStatus('⚠ Тест жарамсыз: 10-нан аз ұяшық қаралды. Нәтиже сақталмады, қайта өткізіңіз.');
+    return;
+  }
+  BOURDON.push(row); store('acousticity_bourdon', BOURDON);
+  renderBourdon(); updateCorr();
+  bdSetStatus(`✔ Тест аяқталды: дәлдік <b class="mono text-cyan-300">${fmt(row.accuracy)}%</b> · қателіктер <b class="mono text-red-300">${errors}</b> (өткізіп алу ${om}, қате белгілеу ${fa}) · өңдеу жылдамдығы <b class="mono">${fmt(speed, 2)}</b> әріп/с${row.rt ? ` · бір мақсатқа орташа уақыт <b class="mono">${fmt(row.rt, 2)} с</b>` : ''}. Нәтиже корреляция графигіне қосылды.`);
+}
+function renderBourdon() {
+  const tb = document.getElementById('bdRows');
+  tb.innerHTML = BOURDON.map((r, i) => `<tr class="border-b border-[#131c36]">
+    <td class="py-1.5 pr-2">${i + 1}</td><td class="pr-2 font-sans">${r.participant}</td><td class="pr-2">${r.ts}</td>
+    <td class="pr-2 font-sans">${r.mode === 'noise' ? '<span class="text-red-300">Көлік шуы</span>' : '<span class="text-green-300">Тыныш</span>'}</td>
+    <td class="text-right pr-2">${fmt(r.level)}</td><td class="text-right pr-2 font-bold text-cyan-300">${fmt(r.accuracy)}</td>
+    <td class="text-right pr-2">${r.errors}</td><td class="text-right pr-2">${fmt(r.speed, 2)}</td>
+    <td><button data-bdel="${r.id}" class="text-red-400 hover:text-red-300" title="Өшіру">✕</button></td></tr>`).join('');
+  tb.querySelectorAll('[data-bdel]').forEach(b => b.onclick = () => {
+    BOURDON = BOURDON.filter(r => r.id !== b.dataset.bdel); store('acousticity_bourdon', BOURDON); renderBourdon(); updateCorr();
+  });
+  const st = bourdonStats();
+  const grp = (arr, name, color) => arr.length
+    ? `<div class="panel p-3"><div class="text-xs text-slate-400">${name} (n = ${arr.length})</div>
+       <div class="mono text-sm mt-1">Дәлдік: <b style="color:${color}">${fmt(mean(arr.map(r => r.accuracy)))} ± ${fmt(sd(arr.map(r => r.accuracy)))}%</b></div>
+       <div class="mono text-sm">Қателік: <b>${fmt(mean(arr.map(r => r.errors)))} ± ${fmt(sd(arr.map(r => r.errors)))}</b></div>
+       <div class="mono text-sm">Жылдамдық: <b>${fmt(mean(arr.map(r => r.speed)), 2)}</b> әріп/с</div></div>`
+    : `<div class="panel p-3 text-xs text-slate-500">${name}: әзірге нәтиже жоқ</div>`;
+  let verdict = '<span class="text-slate-400">Топтарды салыстыру үшін әр режимде кемінде 2 нәтиже қажет (сенімді қорытынды үшін — әр топта 15–20 қатысушы).</span>';
+  if (!st.tErr && st.q.length >= 2 && st.n.length >= 2) verdict = '<span class="text-slate-400">Екі топтың ішінде де нәтижелер бірдей (дисперсия нөлге тең) — t-тест есептелмейді. Қатысушылар санын көбейтіңіз.</span>';
+  if (st.tErr) {
+    const p = st.tErr.p, sig = p < 0.05;
+    verdict = `Уэлч t-тесті (қателіктер, шу − тыныш): t = <b class="mono">${fmt(st.tErr.t, 2)}</b>, df = ${fmt(st.tErr.df, 1)}, p = <b class="mono">${p < 0.001 ? '< 0,001' : fmt(p, 3)}</b> → ${sig ? '<span class="text-green-400 font-semibold">айырмашылық статистикалық тұрғыда мәнді (p < 0,05)</span>' : '<span class="text-yellow-300 font-semibold">айырмашылық статистикалық тұрғыда мәнді емес (p ≥ 0,05) — таңдаманы көбейтіңіз</span>'}.`;
+  }
+  document.getElementById('bdSummary').innerHTML = `<div class="grid md:grid-cols-2 gap-3">${grp(st.q, 'Тыныш фон', '#4ade80')}${grp(st.n, 'Көлік шуы', '#f87171')}</div><div class="text-sm mt-3">${verdict}</div>`;
+  if (typeof updateDbStatus === 'function') updateDbStatus();
+}
+document.querySelectorAll('input[name="bdMode"]').forEach(r => r.addEventListener('change', () => {
+  document.getElementById('bdLevel').value = bdMode() === 'noise' ? 78 : 42;
+  document.getElementById('bdVolWrap').style.opacity = bdMode() === 'noise' ? '1' : '.4';
+}));
+document.getElementById('bdStart').addEventListener('click', bdStart);
+document.getElementById('bdPreview').addEventListener('click', () => {
+  if (traffic) { stopTraffic(); document.getElementById('bdPreview').textContent = '▶ Шуды алдын ала тыңдау'; return; }
+  startTraffic(+document.getElementById('bdVol').value / 100);
+  document.getElementById('bdPreview').textContent = '■ Тоқтату';
+  setTimeout(() => { if (traffic && !BD.running) { stopTraffic(); document.getElementById('bdPreview').textContent = '▶ Шуды алдын ала тыңдау'; } }, 20000);
+});
+document.getElementById('bdVol').addEventListener('input', (e) => {
+  document.getElementById('bdVolVal').textContent = e.target.value + '%';
+  if (traffic) traffic.master.gain.setTargetAtTime(Math.max(+e.target.value / 100, 0.0001), traffic.ctx.currentTime, 0.1);
+});
+document.getElementById('bdClear').addEventListener('click', () => {
+  if (!BOURDON.length) return;
+  if (!window.confirm('Бурдон тестінің барлық нәтижелері өшірілсін бе? Алдымен JSON Backup жасап алыңыз.')) return;
+  BOURDON = []; store('acousticity_bourdon', BOURDON); renderBourdon(); updateCorr();
+});
+bdGenerate(); renderBourdon(); renderMeasTable();
+
+/* ============================================================
+   ДЕРЕКТЕР БАЗАСЫ: localStorage + JSON Backup / Import / Reset
+   ============================================================ */
+const DB_KEYS = ['acousticity_crowd', 'acousticity_protocol', 'acousticity_bourdon', 'acousticity_offset'];
+const STORAGE_OK = (() => { try { const k = '__acousticity_test__'; localStorage.setItem(k, '1'); localStorage.removeItem(k); return true; } catch (e) { return false; } })();
+function updateDbStatus() {
+  const el = document.getElementById('dbStatus'); if (!el) return;
+  try { el.innerHTML = `${STORAGE_OK ? '<span class="text-green-400">● Автосақтау қосулы</span>' : '<span class="text-red-400">● Браузер жадқа сақтауға рұқсат бермейді — JSON Backup қолданыңыз</span>'}
+    · Краудсенсинг: <b class="mono">${CROWD.length}</b> · Өлшеу хаттамасы: <b class="mono">${PROTO_ROWS.length}</b> · Бурдон тесті: <b class="mono">${BOURDON.length}</b>
+    · Калибрлеу ығысуы: <b class="mono">${(calibOffset >= 0 ? '+' : '') + fmt(calibOffset)} дБ</b>`; } catch (e) { /* деректер әлі жүктелмеген */ }
+}
+window.deleteCrowd = function (id) {
+  const o = CROWD.find(c => c.id === id); if (!o) return;
+  if (!window.confirm(`«${o.name}» (${fmt(o.db)} дБА) өшірілсін бе?`)) return;
+  CROWD = CROWD.filter(c => c.id !== id); store('acousticity_crowd', CROWD);
+  map.closePopup(); renderCrowd(); updateKPI(); updateBarChart(); updateDbStatus();
+  toast('🗑️ Нүкте өшірілді.');
+};
+function refreshAllData() {
+  renderCrowd(); renderProto(); renderBourdon(); updateKPI(); updateBarChart(); updateCorr();
+  document.getElementById('vOffset').textContent = (calibOffset >= 0 ? '+' : '') + fmt(calibOffset) + ' дБ';
+  updateDbStatus();
+}
+document.getElementById('dbExport').addEventListener('click', () => {
+  const data = {
+    app: 'AcoustiCity Almaty', format: 1, exported: new Date().toISOString(),
+    crowd: CROWD, protocol: PROTO_ROWS, bourdon: BOURDON, calibOffset
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'acousticity_backup_' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast('💾 Деректер базасы JSON файлына сақталды.');
+});
+document.getElementById('dbImport').addEventListener('click', () => document.getElementById('dbFile').click());
+document.getElementById('dbFile').addEventListener('change', (e) => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    let d;
+    try { d = JSON.parse(rd.result); } catch (err) { toast('✖ Файл JSON форматында емес.'); return; }
+    if (!d || d.app !== 'AcoustiCity Almaty' || !Array.isArray(d.crowd) || !Array.isArray(d.protocol)) { toast('✖ Бұл AcoustiCity Almaty базасының файлы емес.'); return; }
+    const okNum = (v) => typeof v === 'number' && isFinite(v);
+    const crowd = d.crowd.filter(c => c && okNum(c.lat) && okNum(c.lng) && okNum(c.db)).map(c => ({
+      id: String(c.id || ('c' + Math.random().toString(36).slice(2, 9))), name: String(c.name || 'Краудсенсинг өлшемі'), type: 'crowd',
+      lat: c.lat, lng: c.lng, db: c.db, extra: typeof c.extra === 'string' ? c.extra.replace(/<script[\s\S]*?<\/script>/gi, '') : ''
+    }));
+    const protocol = d.protocol.filter(r => r && okNum(r.laeq)).map(r => ({
+      point: String(r.point || '—'), time: String(r.time || ''), laeq: r.laeq, lmax: okNum(r.lmax) ? r.lmax : r.laeq,
+      cars: r.cars === undefined ? '' : String(r.cars), note: String(r.note || ''), offset: okNum(r.offset) ? r.offset : 0
+    }));
+    const bourdon = (Array.isArray(d.bourdon) ? d.bourdon : []).filter(r => r && okNum(r.level) && okNum(r.errors) && okNum(r.accuracy)).map(r => ({
+      id: String(r.id || ('b' + Math.random().toString(36).slice(2, 9))), ts: String(r.ts || ''), participant: String(r.participant || '—'),
+      mode: r.mode === 'noise' ? 'noise' : 'quiet', level: r.level, hits: +r.hits || 0, fa: +r.fa || 0, om: +r.om || 0, errors: r.errors,
+      viewed: +r.viewed || 0, accuracy: r.accuracy, speed: +r.speed || 0, rt: okNum(r.rt) ? r.rt : null
+    }));
+    if (!window.confirm(`Файлда: краудсенсинг — ${crowd.length}, хаттама — ${protocol.length}, Бурдон тесті — ${bourdon.length}.\nАғымдағы деректер осы файлмен АУЫСТЫРЫЛСЫН ба?`)) return;
+    CROWD = crowd; PROTO_ROWS = protocol; BOURDON = bourdon;
+    if (okNum(d.calibOffset)) calibOffset = d.calibOffset;
+    store('acousticity_crowd', CROWD); store('acousticity_protocol', PROTO_ROWS); store('acousticity_bourdon', BOURDON); store('acousticity_offset', calibOffset);
+    refreshAllData();
+    toast('📂 База сәтті жүктелді.');
+  };
+  rd.readAsText(f);
+});
+document.getElementById('dbReset').addEventListener('click', () => {
+  if (!window.confirm('Барлық қолданушы деректері өшірілсін бе?\n(краудсенсинг нүктелері, өлшеу хаттамасы, Бурдон тесті нәтижелері, калибрлеу)\n\nАлдымен «💾 JSON Backup» жасауды ұсынамыз.')) return;
+  CROWD = []; PROTO_ROWS = []; BOURDON = []; calibOffset = 100;
+  DB_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+  refreshAllData();
+  toast('🧹 Барлық қолданушы деректері тазаланды.');
+});
+if (!STORAGE_OK) setTimeout(() => toast('⚠ Бұл браузер деректерді жадқа сақтамайды (жеке/инкогнито режим болуы мүмкін). Жұмыс соңында «💾 JSON Backup» жасаңыз.'), 1500);
+updateDbStatus();
+
+/* ============================================================
+   ІСКЕ ҚОСУ
+   ============================================================ */
+[qR, dR].forEach(el => el.addEventListener('input', updateISO));
+[gS, bC, wS].forEach(el => el.addEventListener('change', updateISO));
+updateISO(); updateIV(); updateBarChart(); updateCorr();
+window.addEventListener('resize', () => { map.invalidateSize(); });
+setTimeout(() => map.invalidateSize(), 300);
+
+/* ============================================================
+   6-МОДУЛЬ: ЭКО-АССИСТЕНТ (AI CHATBOT)
+   Екі режим: (1) кірістірілген смарт-логика — API кілтсіз,
+   сайттың тірі деректеріне сүйенеді; (2) OpenAI-үйлесімді API.
+   ============================================================ */
+const Eco = (() => {
+  const $ = (id) => document.getElementById(id);
+  const chat = $('ecoChat'), fab = $('ecoFab'), msgs = $('ecoMsgs'), txt = $('ecoText'), sendBtn = $('ecoSend');
+  let history = [];          // {role:'user'|'assistant', content}
+  let ctxPoint = null;       // соңғы талқыланған нысан (контекст жады)
+  let busy = false;
+
+  /* ---------- 1. БІЛІМ БАЗАСЫ ---------- */
+  const KB = {
+    norms: `**Шу нормалары (жоба қабылдаған гигиеналық бағдарлар):**
+<ul>
+<li>Мектеп пен балабақша аумағы, күндіз: <span class="hl">45–55 дБА</span> (ҚР санитариялық-гигиеналық талаптары; жобада шекті мән ретінде <b>55 дБА</b> алынған).</li>
+<li>Сынып ішінде сабақ кезінде: <b>≤ 40 дБА</b> (ДДҰ-ның 1999 жылғы нұсқаулығы бойынша — 35 дБА L<sub>Aeq</sub>).</li>
+<li>Балабақшаның ұйықтау бөлмесі: <b>≤ 30–35 дБА</b>.</li>
+<li>Мектеп ауласы (ойын алаңы): ДДҰ бойынша <b>55 дБА</b>.</li>
+<li>Көлік шуы бойынша ДДҰ-ның 2018 жылғы ұсынысы: L<sub>den</sub> <b>53 дБ</b>-ден төмен.</li>
+</ul>
+Ескерту: санитариялық құжаттардың редакциялары жаңарып отырады, ресми баяндамада нақты құжаттың нөмірі мен күнін көрсету ұсынылады.`,
+
+    health: `**Шудың бала ағзасына әсері (ғылыми деректер):**
+<ul>
+<li><b>Зейін:</b> 55 дБА-дан жоғары фондық шу тапсырмаға шоғырлануды әлсіретеді. Жобаның доза–жауап моделі бойынша <span class="hl">70 дБА-дан жоғары</span> деңгейде зейін тестіндегі қателіктер шамамен <span class="bad">30%-ға дейін</span> өседі (модельдік баға; нақты шама зерттеуге қарай өзгереді).</li>
+<li><b>Оқу және есте сақтау:</b> Еуропалық RANCH зерттеуі (Stansfeld және т.б., <i>The Lancet</i>, 2005): ұшақ шуы 5 дБ-ге артқан сайын балалардың оқып түсіну қабілеті 1–2 айға кешеуілдейді.</li>
+<li><b>Жүйке жүйесі мен стресс:</b> шулы аймақтағы балаларда стресс гормондарының (кортизол, адреналин) деңгейі мен артериялық қысымның жоғарылауы тіркелген (Evans және т.б., 1998).</li>
+<li><b>Сөйлеуді қабылдау:</b> сыныпта мұғалім дауысы фоннан кемінде <b>+15 дБ</b> жоғары болуы керек (ANSI S12.60). Шу жоғарылағанда мұғалім дауысын көтеруге мәжбүр болады (Ломбард эффектісі).</li>
+<li><b>Ұйқы:</b> түнгі шу ұйқы құрылымын бұзады, бұл келесі күнгі когнитивті белсенділікті төмендетеді.</li>
+</ul>`,
+
+    solutions: `**Шуды азайтудың тиімді шешімдері (тиімділігі бойынша):**
+<ul>
+<li>▦ <b>Перфорацияланған акустикалық экран:</b> <span class="ok">−10…−15 дБ</span> (жобада −12 дБ). Ең тиімдісі, бірақ экран көзден көрінуді толық жабуы керек. Креативті нұсқа: балалар суреттері салынған арт-экран.</li>
+<li>🏢 <b>Ғимараттардың экрандауы:</b> арада тұрғын үй болса, <span class="ok">≈ −10 дБ</span>.</li>
+<li>◫ <b>Дыбыс жұтатын дизайн-панельдер (дәліз, сынып):</b> <span class="ok">−6…−8 дБ</span>. Жаңғырық уақытын (RT60) ≤ 0,6 с деңгейіне дейін қысқартады.</li>
+<li>🌳 <b>Жасыл қорғаныс белдеуі:</b> ені ≥ 15–30 м болатын тығыз белдеу <span class="ok">−4…−6 дБ</span> береді. Бір қатар ағаш физикалық тұрғыдан аз әсер етеді (1–2 дБ), бірақ шуды психологиялық қабылдауды жақсартады.</li>
+<li>🪟 <b>Акустикалық терезелер:</b> сынып ішінде <span class="ok">−25…−32 дБ</span> (жабық күйде).</li>
+<li>🛣 <b>«Тыныш асфальт» және жылдамдықты шектеу</b> (60 → 40 км/сағ): <span class="ok">−2…−5 дБ</span>.</li>
+<li>🧭 <b>Жоспарлау:</b> сыныптарды ғимараттың жолға қарама-қарсы (тыныш) жағына орналастыру.</li>
+</ul>
+Барлық экрандық шешімдердің жиынтық әсері ISO 9613-2 бойынша шамамен 20–25 дБ-мен шектеледі.`,
+
+    iso: `**ISO 9613-2 моделі (3-модуль):**
+<code>Leq = L0 − Adiv − Aatm − Agr − Abar</code>
+<ul>
+<li><b>L0 = 10·lg(Q) + 42</b> — 10 м қашықтықтағы көлік ағынының эмиссиясы (Q — көлік/сағ).</li>
+<li><b>Adiv = 10·lg(d/10)</b> — сызықтық көздің геометриялық таралуы (қашықтық екі еселенгенде −3 дБ).</li>
+<li><b>Aatm = α·d/1000</b>, α = 3,7 дБ/км (1 кГц) — ауаның жұтуы.</li>
+<li><b>Agr</b> — жер бетінің әсері: асфальт 0 дБ, көгал ISO формуласымен, ағаштар −6 дБ.</li>
+<li><b>Abar</b> — экрандау: ғимарат −10 дБ.</li>
+</ul>
+Мысалы, <code>2000 көлік 60 м</code> деп жазсаңыз, есептеп беремін.`,
+
+    dsp: `**Веб-шумомер қалай жұмыс істейді (2-модуль):**
+<ul>
+<li>Микрофон сигналы <b>AnalyserNode</b> арқылы <b>FFT</b>-ге (N = 8192) беріледі: уақыттық сигнал 20 Гц – 20 кГц аралығындағы жиілік спектріне жіктеледі.</li>
+<li>Әр жиілік жолағына <b>A-түзету</b> қолданылады: <code>A(f) = 20·lg RA(f) + 2,00</code> (IEC 61672-1). Ол құлақтың ең сезімтал <span class="hl">1–4 кГц</span> аймағын ескереді.</li>
+<li>Қуаттар энергетикалық түрде қосылып, <b>Fast</b> (τ = 125 мс) уақыттық салмақпен дБА алынады.</li>
+<li><b>Калибрлеу:</b> тыныш бөлмеде (≈30 дБА) 3 секунд өлшеп, микрофонның ығысуын есептейді. Дәлдігі ±3–5 дБ.</li>
+</ul>`,
+
+    calib: `**Микрофонды калибрлеу тәртібі:**
+<ul>
+<li>1) Тыныш бөлмеге кіріңіз (терезе жабық, техника өшірулі).</li>
+<li>2) «Акустикалық талдауды бастау» батырмасын басып, микрофонға рұқсат беріңіз.</li>
+<li>3) «Микрофонды калибрлеу (Тыныш бөлме 30 дБ)» батырмасын басып, 3 секунд тыныш отырыңыз.</li>
+<li>4) Жүйе ығысуды сақтайды, кейінгі барлық өлшемдер соған сай түзетіледі.</li>
+</ul>
+Дәлірек нәтиже үшін құрылғыны сертификатталған шумомермен бір нүктеде салыстырып шығуға болады.`,
+
+    masking: `**Биоакустикалық дыбыстық маскировка (4-модуль):**
+Қызғылт шу (Pink noise, 1/f) әр октаваға −3 дБ түседі, сондықтан ақ шуға қарағанда құлаққа жұмсақ естіледі. Табиғат дыбыстары (өзен, теңіз, орман) үзіліс кезінде зейінді қалпына келтіруге көмектеседі. Бұл «зейінді қалпына келтіру теориясы» (Attention Restoration Theory, Kaplan) деп аталады.
+<ul><li>Ұсыныс: үзілісте <b>3–5 минут</b>, төмен дыбыс деңгейінде (≤ 45 дБА).</li><li>Маскировка сабақ кезінде қолданылмайды, тек демалыс аймағында.</li></ul>`,
+
+    crowd: `**Краудсенсинг (азаматтық ғылым):**
+<ul><li>2-модульде өлшеу жүргізіңіз (30–60 с, телефонды кеуде деңгейінде ұстаңыз).</li>
+<li>«Нәтижені картаға қосу» батырмасын басыңыз: GPS бойынша картаға күлгін ромб-маркер қосылады.</li>
+<li>Өлшемдер аналитика графигіне де автоматты түрде қосылады.</li></ul>
+Көп оқушы өлшем жүргізсе, қаланың нақты акустикалық картасы құралады.`,
+
+    map: `**Картамен жұмыс (1-модуль):**
+<ul><li><b>Click &amp; Predict:</b> режимді қосып, картаның кез келген жерін басыңыз. Алгоритм ең жақын магистральға дейінгі қашықтықты табады да, шу деңгейі мен зейіннің төмендеу пайызын болжайды.</li>
+<li><b>Жылулық карта:</b> әр нысанның 55 дБА-ға дейінгі акустикалық радиусы.</li>
+<li><b>Қауіп аймақтары:</b> мектептер мен балабақшалардың 300 метрлік буфері.</li>
+<li>Жоғарғы оң жақтан көше картасын, спутникті немесе қараңғы режимді таңдауға болады.</li></ul>`,
+
+    parents: `**Ата-аналар мен мұғалімдерге практикалық кеңестер:**
+<ul><li>Үй тапсырмасын жолға қарамайтын бөлмеде орындатыңыз.</li>
+<li>Балалардың құлаққаппен тыңдайтын дыбысын шектеңіз: ДДҰ ұсынысы бойынша күніне 1 сағаттан аспай, ең жоғары дыбыстың 60%-ынан төмен.</li>
+<li>Ұйқы бөлмесінде түнгі шу ≤ 30 дБА болуы керек: тығыз перделер мен терезе тығыздағыштарын пайдаланыңыз.</li>
+<li>Сабақ арасында «тыныштық минуттарын» өткізіңіз.</li>
+<li>Бала жиі шаршаса, бас ауруына, ашуланшақтыққа шағымданса, педиатрға көрсетіңіз (шу — ықтимал себептердің бірі ғана).</li></ul>`,
+
+    about: `Мен — <b>Eco-Acoustic AI Assistant</b>, «AcoustiCity Almaty» жобасының сарапшы-ассистентімін. Менің білетінім:
+<ul><li>картадағы ${POINTS.length} далалық өлшем нүктесінің деректері және олардың шешімдері;</li><li>ҚР мен ДДҰ шу нормалары;</li><li>шудың зейінге, есте сақтауға, жүйке жүйесіне әсері;</li><li>ISO 9613-2 есептеулері (мысалы: <code>3000 көлік 80 м ағаштар</code>);</li><li>шумомер, калибрлеу, краудсенсинг;</li><li>урбанистикалық және креативті шешімдер.</li></ul>
+Кез келген дБ мәнін жазыңыз (мысалы: <code>68 дБ</code>), бағалап беремін.`
+  };
+
+  /* ---------- 2. МӘТІНДІ ӨҢДЕУ ---------- */
+  const norm = (s) => s.toLowerCase().replace(/ё/g, 'е').replace(/[«»"“”().,!?;:]/g, ' ').replace(/\s+/g, ' ').trim();
+  const has = (t, arr) => arr.some(w => t.includes(w));
+  const STOP = new Set(['мектебі', 'республикалық', 'назарбаев', 'зияткерлік', 'халықаралық', 'international', 'school', 'almaty', 'лицейі', 'арналған', 'балаларға', 'дарынды', 'атындағы', 'education', 'мектеп-интернат', 'мектеп', 'мектеп-лицей', 'мектеп-гимназия', 'балабақша', 'қиылысы', 'маңы', 'саябағы', 'тауы', 'бақ', 'даңғылы', 'көшесі', 'жібек', 'жолы', 'орталық', 'мәдениет', 'және', 'демалыс', 'бас', 'көлі', 'ш/а', '–', '-']);
+  const POINT_KEYS = POINTS.map((p, i) => {
+    const words = norm(p.name).split(/[\s–\-\/]+/).filter(w => w.length >= 4 && !STOP.has(w));
+    const stems = words.map(w => w.slice(0, Math.min(w.length, w.length > 6 ? 5 : w.length)));
+    return { i, stems };
+  });
+  // Қосымша синонимдер
+  const idx = (sub) => POINTS.findIndex(p => p.name.includes(sub));
+  const ALIAS = [
+    [['горький', 'горки', 'орталық саябақ'], idx('Орталық мәдениет')], [['панфилов', '28 гвардия'], idx('панфиловшылар')], [['ботаникал', 'ботсад'], idx('ботаникалық')],
+    [['президент'], idx('Президент')], [['көктөбе', 'коктобе', 'кок-тобе'], idx('Көктөбе')], [['мега'], idx('Розыбакиев')], [['самал'], idx('Самал')],
+    [['рфмш', 'физмат', 'физика-мат', 'физика мат', 'бұхар', 'бухар', 'біздің мектеп', 'менің мектеб', 'өз мектеб'], idx('РФМШ')],
+    [['фмб', 'фмн', 'ниш фм', 'нзм фм', 'жамақаев', 'жамакаев'], idx('(ФМБ)')], [['хбб', 'хбн', 'ниш хб', 'нзм хб', 'елебаев'], idx('(ХББ)')],
+    [['haileybury', 'хейлибери', 'хэйлибери'], idx('Haileybury')], [['tamos', 'тамос'], idx('TAMOS')], [['qsi'], idx('QSI')],
+    [['мирас', 'miras'], idx('Мирас')], [['бил', 'білім-инновация', 'білім инновация', 'ақсай'], idx('Білім-Инновация')],
+    [['ngs', 'new generation', 'нгс', 'ерменсай'], idx('NGS')], [['kis', 'kazakhstan international'], idx('Kazakhstan International')],
+    [['абай атындағы', 'дарынды балалар', 'мектеп-интернат', 'митин'], idx('мектеп-интернат')]
+  ].filter(a => a[1] >= 0);
+  function findPoints(t) {
+    const scores = new Map();
+    POINT_KEYS.forEach(k => { const s = k.stems.filter(st => t.includes(st)).length; if (s) scores.set(k.i, s); });
+    ALIAS.forEach(([keys, i]) => { if (has(t, keys)) scores.set(i, (scores.get(i) || 0) + 2); });
+    if (!scores.size) return [];
+    const max = Math.max(...scores.values());
+    return [...scores.entries()].filter(e => e[1] === max).map(e => POINTS[e[0]]);
+  }
+  const num = (s) => parseFloat(String(s).replace(',', '.'));
+  const fd = (v) => Number.isInteger(v) ? String(v) : fmt(v);
+
+  /* ---------- 3. ТІРІ ДЕРЕКТЕР (сайт күйі) ---------- */
+  function siteData() {
+    const all = POINTS.concat(CROWD);
+    const kids = POINTS.filter(p => p.type === 'school' || p.type === 'kinder');
+    const bst = bourdonStats();
+    return {
+      points: POINTS.map(p => ({ name: p.name, type: TYPE_KZ[p.type], db: p.db, status: levelClass(p.db), solution: creativeSolution(p.db, p.type) })),
+      crowdsensing: CROWD.map(c => ({ name: c.name, db: c.db, lat: +c.lat.toFixed(4), lng: +c.lng.toFixed(4) })),
+      averageDb: +(energySum(all.map(p => p.db)) - 10 * lg(all.length)).toFixed(1),
+      redCount: all.filter(p => p.db > 70).length,
+      kidsOverNorm: kids.filter(k => k.db > NORM).map(k => k.name),
+      isoCalculator: lastIso ? { Q: +qR.value, d: +dR.value, ground: gS.value, barrier: bC.checked, Leq: +lastIso.Leq.toFixed(1) } : null,
+      interventions: { base: +baseR.value, enabled: IV.filter(v => $(v.id).checked).map(v => v.label) },
+      microphone: isFinite(lastLA) ? { LAeq: +lastLA.toFixed(1), calibrationOffset: +calibOffset.toFixed(1) } : null,
+      bourdonTest: { n: BOURDON.length, quiet: bst.q.length, noise: bst.n.length,
+        r: bst.reg && isFinite(bst.reg.r) ? +bst.reg.r.toFixed(3) : null,
+        meanErrorsQuiet: bst.q.length ? +mean(bst.q.map(r => r.errors)).toFixed(2) : null,
+        meanErrorsNoise: bst.n.length ? +mean(bst.n.map(r => r.errors)).toFixed(2) : null,
+        welchP: bst.tErr ? +bst.tErr.p.toFixed(4) : null },
+      protocolMeasurements: PROTO_ROWS.length,
+      norm: NORM
+    };
+  }
+
+  /* ---------- 4. ЖАУАП ҚҰРАСТЫРУШЫЛАР ---------- */
+  function statusWord(L) { return L > 70 ? '<span class="bad">қауіпті</span>' : L >= 55 ? '<span class="hl">орташа қауіп</span>' : '<span class="ok">қауіпсіз</span>'; }
+  function dbAnswer(L) {
+    const over = L - NORM;
+    return `**${fmt(L)} дБА деңгейін бағалау:** ${statusWord(L)}.
+<ul><li>Нормадан ауытқу (55 дБА): <b>${over > 0 ? '+' : ''}${fmt(over)} дБ</b>${over > 0 ? `, яғни дыбыс энергиясы нормадан <b>${fmt(Math.pow(10, over / 10), 1)} есе</b> көп` : ''}.</li>
+<li>Болжамды зейіннің төмендеуі: <span class="hl">${fmt(attentionDrop(L), 0)}%</span>, есте сақтау: <span class="hl">${fmt(memoryDrop(L), 0)}%</span> (жобаның эвристикалық моделі).</li>
+<li>Әсері: ${cognitiveText(L)}</li>
+<li>Ұсыныс: ${creativeSolution(L, 'school')}</li></ul>
+${over > 0 ? `Нормаға жету үшін кемінде <b>${fmt(over)} дБ</b> төмендету керек. ${over > 12 ? 'Бір шешім жеткіліксіз, экран мен жасыл белдеуді бірге қолдану қажет.' : over > 6 ? 'Акустикалық экран жеткілікті болуы мүмкін.' : 'Жасыл белдеу немесе дизайн-панельдер жеткілікті болуы мүмкін.'}` : 'Деңгей нормаға сай, бірақ сынып ішінде 40 дБА-дан аспауын тексеріңіз.'}`;
+  }
+  function pointAnswer(p) {
+    const kids = p.type === 'school' || p.type === 'kinder';
+    const nearRoad = predictAt(p.lat, p.lng).nearest;
+    const rank = POINTS.slice().sort((a, b) => b.db - a.db).indexOf(p) + 1;
+    return {
+      text: `**${p.name}** (${TYPE_KZ[p.type]})
+<ul><li>Шу деңгейі: <b>${fd(p.db)} дБА</b>${p.measured ? ` (далалық өлшем, ${p.time}; L<sub>Amax</sub> = ${fd(p.lmax)} дБА)` : ''}, ${statusWord(p.db)}. Қаладағы ${POINTS.length} нысанның ішінде шу бойынша ${rank}-орында.</li>
+${p.measured ? '' : `<li>Ең жақын магистраль: <b>${nearRoad.name}</b> (мекенжай нүктесінен ≈ ${fmt(nearRoad.d, 0)} м, ${nearRoad.q} көлік/сағ)${p.modelled ? `. дБ — модельдік болжам: есепте ғимараттың жолдан шегінуі ≥ ${SCHOOL_SETBACK} м деп алынды` : ''}.</li>`}
+<li>${kids ? `Балаларға әсері: зейін <span class="hl">−${fmt(attentionDrop(p.db), 0)}%</span>, есте сақтау <span class="hl">−${fmt(memoryDrop(p.db), 0)}%</span> (модельдік баға). ${cognitiveText(p.db)}` : `Когнитивті әсері: ${cognitiveText(p.db)}`}</li>
+<li><b>Креативті индустрия шешімі:</b> ${creativeSolution(p.db, p.type)}</li></ul>
+${p.db > NORM ? `Нормаға жету үшін <b>−${fmt(p.db - NORM)} дБ</b> қажет. Симуляторда тексеріп көруге болады.` : 'Бұл нысан қала үшін «тыныштық аралы» бола алады.'}`,
+      actions: [
+        { label: '📍 Картадан көрсету', fn: () => showOnMap(p) },
+        ...(p.db > NORM ? [{ label: '🧪 Симуляторда сынау', fn: () => { baseR.value = p.db; updateIV(); go('m4'); } }] : [])
+      ]
+    };
+  }
+  function showOnMap(p) {
+    go('m1');
+    setTimeout(() => {
+      map.flyTo([p.lat, p.lng], 15, { duration: .8 });
+      setTimeout(() => markerLayer.eachLayer(m => { const ll = m.getLatLng(); if (Math.abs(ll.lat - p.lat) < 1e-6 && Math.abs(ll.lng - p.lng) < 1e-6) m.openPopup(); }), 900);
+    }, 350);
+  }
+  function go(id) { document.getElementById(id).scrollIntoView({ behavior: 'smooth' }); }
+
+  function rankingAnswer(desc = true) {
+    const arr = POINTS.slice().sort((a, b) => desc ? b.db - a.db : a.db - b.db).slice(0, 5);
+    return {
+      text: `**${desc ? 'Ең шулы' : 'Ең тыныш'} 5 нысан:**<ul>${arr.map((p, i) => `<li>${i + 1}. ${p.name} — <b>${fd(p.db)} дБА</b> (${statusWord(p.db)})</li>`).join('')}</ul>
+${desc ? 'Ең шулы нүктелердің бәрі ірі магистральдардың қиылыстарында. Олардың жанындағы балалар мекемелеріне басымдық беріп, экран орнату керек.' : 'Бұл саябақтар үзіліс пен сабақтан тыс уақытқа арналған «акустикалық тыныштық аймақтары» бола алады.'}`,
+      actions: arr.slice(0, 3).map(p => ({ label: '📍 ' + p.name.split(' (')[0].slice(0, 22), fn: () => showOnMap(p) }))
+    };
+  }
+  function kidsAnswer() {
+    const kids = POINTS.filter(p => p.type === 'school' || p.type === 'kinder').sort((a, b) => b.db - a.db);
+    const over = kids.filter(k => k.db > NORM);
+    return {
+      text: `**Балалар мекемелерінің акустикалық жағдайы:** ${kids.length} мекеменің <span class="bad">${over.length}</span>-інде шу 55 дБА нормасынан асады.
+<ul>${kids.map(k => `<li>${k.name}: <b>${fd(k.db)} дБА</b> ${k.db > NORM ? `→ <span class="bad">+${fd(+(k.db - NORM).toFixed(1))} дБ</span>` : '→ <span class="ok">норма</span>'}</li>`).join('')}</ul>
+Басымдық: <b>${kids[0].name}</b> (${fd(kids[0].db)} дБА). Ұсынылатын шешім: ${creativeSolution(kids[0].db, kids[0].type)}`,
+      actions: [{ label: '⬡ Қауіп аймақтарын қосу', fn: () => { go('m1'); if (!map.hasLayer(riskLayer)) document.getElementById('btnRisk').click(); } }, { label: '📍 ' + kids[0].name.slice(0, 24), fn: () => showOnMap(kids[0]) }]
+    };
+  }
+  function statsAnswer() {
+    const d = siteData(), st = bourdonStats(), reg = st.reg;
+    return `**Жобаның статистикалық қорытындысы:**
+<ul><li>Нысандар саны: <b>${POINTS.length + CROWD.length}</b> (оның ішінде краудсенсинг: ${CROWD.length}).</li>
+<li>Энергетикалық орташа деңгей: <b>${fmt(d.averageDb)} дБА</b>.</li>
+<li>Қауіпті (>70 дБА) нүктелер: <span class="bad">${d.redCount}</span>; нормадан асқан балалар мекемелері: <span class="hl">${d.kidsOverNorm.length}</span>.</li>
+<li>Өлшеу хаттамасындағы далалық өлшемдер: <b>${PROTO_ROWS.length}</b>.</li>
+<li>Бурдон тесті: <b>${BOURDON.length}</b> нәтиже (тыныш — ${st.q.length}, шу — ${st.n.length}).${reg && isFinite(reg.r) ? ` Шу мен қателіктер корреляциясы: Пирсон <b>r = ${fmt(reg.r, 3)}</b>, R² = ${fmt(reg.r * reg.r, 3)}.` : ' Корреляция үшін кемінде 3 нәтиже қажет.'}${st.tErr ? ` Уэлч t-тесті: p = ${fmt(st.tErr.p, 3)}.` : ''}</li></ul>
+Ескерту: корреляция себеп-салдарлық байланысты өздігінен дәлелдемейді; сенімді қорытынды үшін әр топта кемінде 15–20 қатысушы қажет.`;
+  }
+  function isoAnswer(q, d, ground, bar) {
+    const r = isoModel(q, d, ground, bar);
+    return {
+      text: `**ISO 9613-2 есебі:** Q = ${q} көлік/сағ, d = ${d} м, жабын: ${ground === 'hard' ? 'асфальт' : ground === 'grass' ? 'көгал' : 'ағаштар'}, экран: ${bar ? 'бар' : 'жоқ'}.
+<code>Leq = ${fmt(r.L0)} − ${fmt(r.Adiv)} − ${fmt(r.Aatm, 2)} − ${fmt(r.Agr)} − ${fmt(r.Abar)} = ${fmt(r.Leq)} дБА</code>
+<ul><li>Мектеп терезесінің алдында: <b>${fmt(r.Leq)} дБА</b>, ${statusWord(r.Leq)}.</li>
+<li>Ашық терезе кезінде сынып ішінде ≈ <b>${fmt(r.Leq - 10)} дБА</b> (норма: 40).</li>
+<li>Зейіннің төмендеуі: <span class="hl">${fmt(attentionDrop(r.Leq), 0)}%</span>, есте сақтау: <span class="hl">${fmt(memoryDrop(r.Leq), 0)}%</span>.</li></ul>`,
+      actions: [{ label: '⚙ Калькуляторға енгізу', fn: () => { qR.value = q; dR.value = clamp(d, 10, 600); gS.value = ground; bC.checked = bar; updateISO(); go('m3'); } }]
+    };
+  }
+  function micAnswer() {
+    if (!isFinite(lastLA)) return { text: 'Әзірге микрофон өлшемі жоқ. 2-модульде «Акустикалық талдауды бастау» батырмасын басыңыз. Өлшем біткен соң маған «өлшемім қандай?» деп жазсаңыз, нәтижені талдап беремін.', actions: [{ label: '🎙 Шумомерге өту', fn: () => go('m2') }] };
+    return { text: `**Сіздің соңғы өлшеміңіз:** L<sub>Aeq</sub> = <b>${fmt(lastLA)} дБА</b> (калибрлеу ығысуы ${fmt(calibOffset)} дБ).<br>` + dbAnswer(lastLA), actions: [{ label: '＋ Картаға қосу', fn: () => document.getElementById('btnAddMap').click() }] };
+  }
+  function currentIsoAnswer() {
+    if (!lastIso) return null;
+    return isoAnswer(+qR.value, +dR.value, gS.value, bC.checked);
+  }
+
+  /* ---------- 5. ИНТЕНТТЕРДІ ТАНУ (смарт-логика) ---------- */
+  function localReply(raw) {
+    const t = norm(raw);
+    const R = (text, actions = []) => ({ text, actions });
+
+    // Сандық мәндер
+    const mDb = t.match(/(\d{2,3}(?:[.,]\d+)?)\s*(дба|дб|db|dba|децибел)(?![a-zа-яәіңғүұқөһ])/);
+    const mQ = t.match(/(\d{2,5})\s*(көлік|машина|автомобиль|авто|veh|машин)/);
+    const mD = t.match(/(\d{1,4})\s*(метр|м|m)(?![a-zа-яәіңғүұқөһ])/);
+
+    // Сәлемдесу және алғыс
+    if (/^(сәлем|салем|привет|hello|hi|қайырлы|ассалау|сәлеметсіз)/.test(t)) return R('Сәлеметсіз бе! 👋 Мен қалалық акустика және балалар денсаулығы бойынша Эко-Ассистентпін. Белгілі бір нысан, шу нормалары, шудың денсаулыққа әсері немесе шешімдер туралы сұраңыз. Мысалы: <code>Ең шулы мектеп қайсы?</code>');
+    if (has(t, ['рахмет', 'рақмет', 'спасибо', 'thanks', 'алғыс'])) return R('Оқасы жоқ! 🌿 Балалардың тыныш ортада оқуы — біздің ортақ мақсатымыз. Тағы сұрағыңыз болса, жазыңыз.');
+    if (has(t, ['сен кім', 'кімсің', 'не істей аласың', 'көмек', 'help', 'мүмкіндік', 'не білесің'])) return R(KB.about);
+
+    // ISO есебі (Q және d берілсе)
+    if (mQ && mD) {
+      const ground = has(t, ['ағаш', 'белдеу', 'орман']) ? 'trees' : has(t, ['көгал', 'шөп', 'газон']) ? 'grass' : 'hard';
+      const bar = has(t, ['үй бар', 'ғимарат', 'экран', 'кедергі']);
+      const a = isoAnswer(clamp(num(mQ[1]), 100, 20000), clamp(num(mD[1]), 10, 5000), ground, bar);
+      return R(a.text, a.actions);
+    }
+    // Микрофон өлшемі
+    if (has(t, ['өлшемім', 'менің өлшем', 'өлшеген', 'микрофон нәтиже', 'менің нәтиже', 'шумомер нәтиже'])) { const a = micAnswer(); return R(a.text, a.actions); }
+
+    // Нақты нысан
+    const found = findPoints(t);
+    if (found.length === 1) { ctxPoint = found[0]; const a = pointAnswer(found[0]); return R(a.text, a.actions); }
+    if (found.length > 1) {
+      return R(`Сұрағыңызға бірнеше нысан сәйкес келеді:<ul>${found.map(p => `<li>${p.name} — <b>${fd(p.db)} дБА</b> (${statusWord(p.db)})</li>`).join('')}</ul>Қайсысын толығырақ талдайын?`,
+        found.slice(0, 4).map(p => ({ label: p.name.slice(0, 26), fn: () => ask(p.name + ' туралы') })));
+    }
+
+    // дБ мәнін бағалау
+    if (mDb) return R(dbAnswer(clamp(num(mDb[1]), 0, 140)), [{ label: '🧪 Симуляторда сынау', fn: () => { baseR.value = clamp(num(mDb[1]), 50, 90); updateIV(); go('m4'); } }]);
+
+    // Контекст бойынша нақтылау («оған не істеу керек?»)
+    if (ctxPoint && has(t, ['оған', 'онда', 'сол жер', 'бұл жер', 'сол нысан', 'бұл нысан', 'не істеу', 'қалай азайт', 'шешім']) && !has(t, ['жалпы', 'барлық'])) {
+      const p = ctxPoint;
+      return R(`**${p.name} үшін нақты шешімдер жоспары** (қазіргі деңгей: ${fd(p.db)} дБА):
+<ul>${p.db > 70 ? '<li>1) Магистраль бойымен перфорацияланған арт-экран: −12 дБ</li><li>2) Экранның артына көп қатарлы жасыл белдеу: −6 дБ</li><li>3) Сыныптарға акустикалық терезелер: ішкі деңгей −25…−32 дБ</li>' : p.db >= 55 ? '<li>1) Жасыл белдеу немесе «жасыл қабырға»: −6 дБ</li><li>2) Дәліздер мен сыныптарға дизайн-панельдер: −8 дБ</li><li>3) Үзілісте биоакустикалық маскировка</li>' : '<li>Нысан нормаға сай. Оны «тыныштық аймағы» ретінде сақтап, жаңа жол құрылысынан қорғау керек.</li>'}</ul>
+Болжамды нәтиже (аулада): <b>${p.db > 70 ? fmt(p.db - 18) : p.db >= 55 ? fmt(p.db - 6) : fmt(p.db)} дБА</b>${p.db >= 55 ? '; ғимарат ішінде панельдер қосымша −8 дБ береді' : ''}.`,
+        [{ label: '🧪 Симуляторда тексеру', fn: () => { baseR.value = clamp(p.db, 50, 90); updateIV(); go('m4'); } }]);
+    }
+
+    // Тақырыптық интенттер
+    if (has(t, ['ең шулы', 'ең қауіпті', 'ең жоғары', 'рейтинг', 'топ', 'нашар', 'шулы жер', 'шулы нысан', 'қай жер шулы'])) { const a = rankingAnswer(true); return R(a.text, a.actions); }
+    if (has(t, ['ең тыныш', 'тыныш жер', 'қауіпсіз жер', 'ең төмен', 'демалуға'])) { const a = rankingAnswer(false); return R(a.text, a.actions); }
+    if (has(t, ['мектептер', 'балабақшалар', 'балалар мекеме', 'қай мектеп', 'қай балабақша', 'мектеп қауіп', 'мектепте шу', 'мекемелер'])) { const a = kidsAnswer(); return R(a.text, a.actions); }
+    if (has(t, ['норма', 'санпин', 'стандарт', 'шекті', 'рұқсат етілген', 'талап', 'ережe', 'ереже', 'ддұ', 'who'])) return R(KB.norms);
+    if (has(t, ['калибр'])) return R(KB.calib, [{ label: '🎙 Шумомерге өту', fn: () => go('m2') }]);
+    if (has(t, ['fft', 'фурье', 'спектр', 'a-weight', 'a-түзет', 'дба деген', 'шумомер', 'микрофон', 'жиілік'])) return R(KB.dsp, [{ label: '🎙 Шумомерге өту', fn: () => go('m2') }]);
+    if (has(t, ['iso', '9613', 'формула', 'калькулятор', 'есепте', 'модель'])) {
+      const cur = currentIsoAnswer();
+      return R(KB.iso + (cur ? '<br><br>**Калькулятордың қазіргі күйі:**<br>' + cur.text : ''), cur ? [] : []);
+    }
+    if (has(t, ['pink', 'қызғылт', 'маскировка', 'табиғат дыбыс', 'релакс', 'тынығу', 'үзіліс', 'саунд'])) return R(KB.masking, [{ label: '🎧 Генераторға өту', fn: () => go('m4') }]);
+    if (has(t, ['краудсенсинг', 'crowd', 'картаға қос', 'өлшем қос'])) return R(KB.crowd);
+    if (has(t, ['карта', 'click', 'predict', 'болжа', 'қабат'])) return R(KB.map, [{ label: '🗺 Картаға өту', fn: () => go('m1') }]);
+    if (has(t, ['статистика', 'корреляция', 'орташа', 'қорытынды', 'аналитика', 'пирсон', 'қанша нысан'])) return R(statsAnswer(), [{ label: '📊 Аналитикаға өту', fn: () => go('m5') }]);
+    if (has(t, ['экран', 'ағаш', 'отырғыз', 'жасыл', 'панель', 'терезе', 'шешім', 'азайт', 'төмендет', 'ұсыныс', 'қорға', 'не істеу', 'креатив', 'асфальт'])) return R(KB.solutions, [{ label: '🧪 Симуляторға өту', fn: () => go('m4') }]);
+    if (has(t, ['ата-ана', 'ата ана', 'мұғалім', 'кеңес', 'үйде', 'құлаққап', 'ұйқы'])) return R(KB.parents);
+    if (has(t, ['зейін', 'есте сақта', 'жүйке', 'денсаулық', 'ми', 'когнитив', 'әсер', 'зиян', 'стресс', 'қатель', 'бала', 'оқу үлгерім', 'кортизол'])) return R(KB.health);
+    if (has(t, ['шу', 'дыбыс', 'акустик', 'децибел'])) return R(`Шу — адамға жағымсыз, ретсіз дыбыс тербелістерінің жиынтығы. Деңгейі логарифмдік шкаладағы <b>децибелмен (дБ)</b> өлшенеді: +10 дБ энергияны 10 есе арттырады, ал құлаққа шамамен 2 есе қатты естіледі. Алматыда шудың негізгі көзі — автокөлік ағыны (жобадағы ең шулы нүкте: <b>${(() => { const p = POINTS.slice().sort((a, b) => b.db - a.db)[0]; return p.name + ', ' + fmt(p.db) + ' дБА'; })()}</b>).<br>Нақтырақ сұраңыз: нормалар, балаларға әсері, шешімдер немесе белгілі бір нысан.`);
+
+    return R(`Сұрағыңызды толық түсінбедім 🤔 Мен мына тақырыптар бойынша нақты жауап бере аламын:
+<ul><li>нысан бойынша: <code>Абай – Саин қиылысы</code>, <code>Алмагүлдегі мектеп</code></li><li>дБ мәнін бағалау: <code>72 дБ қауіпті ме?</code></li><li>есептеу: <code>3000 көлік 100 м көгал</code></li><li>нормалар, денсаулыққа әсері, шешімдер, статистика</li></ul>`);
+  }
+
+  /* ---------- 6. AI РЕЖИМІ (OpenAI / Gemini / Groq / Claude / өз прокси) ---------- */
+  /* Сайт интернетке шыққанда AI барлық келушілерге жұмыс істеуі үшін осында өз
+     прокси-серверіңіздің мекенжайын жазыңыз (мысалы, Cloudflare Worker: https://eco-ai.ATYNYZ.workers.dev).
+     API кілтінің өзін мұнда ЖАЗБАҢЫЗ — ол прокси-серверде жасырын сақталады. */
+  const ECO_PROXY_URL = 'https://eco-ai.nnn13111112.workers.dev';
+
+  const PRESETS = {
+    proxy:     { endpoint: ECO_PROXY_URL, model: 'server-default', needsKey: false },
+    openai:    { endpoint: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini', needsKey: true },
+    gemini:    { endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', model: 'gemini-2.5-flash', needsKey: true },
+    deepseek:  { endpoint: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat', needsKey: true },
+    groq:      { endpoint: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile', needsKey: true },
+    anthropic: { endpoint: 'https://api.anthropic.com/v1/messages', model: 'claude-haiku-5-5', needsKey: true },
+    custom:    { endpoint: '', model: '', needsKey: true }
+  };
+  const SYSTEM_PROMPT = `Сен — «Eco-Acoustic AI Assistant», «AcoustiCity Almaty» ғылыми жобасындағы қалалық акустика және балалар денсаулығы жөніндегі сарапшысың.
+Ережелер:
+- Тек таза, академиялық қазақ тілінде жауап бер. Нақты, ғылыми, қысқа (120–220 сөз) жаз, қажет болса тізім қолдан.
+- Нормалар: ҚР санитариялық талаптары бойынша мектеп/балабақша аумағы үшін күндізгі шу 45–55 дБА (жобада шекті мән 55 дБА); сынып ішінде ≤40 дБА (ДДҰ 1999: 35 дБА); ұйықтау бөлмесі ≤30–35 дБА; ДДҰ 2018: көлік шуы Lden < 53 дБ.
+- Денсаулыққа әсері: жобаның доза–жауап моделі бойынша 70 дБА-дан жоғары деңгейде зейін тестіндегі қателіктер ~30%-ға дейін өседі (бұл модельдік баға екенін әрдайым ескерт); RANCH зерттеуі (Stansfeld және т.б., Lancet 2005): +5 дБ ұшақ шуы оқу түсінігін 1–2 айға кешеуілдетеді; Evans және т.б. (1998): шулы аймақтағы балаларда стресс гормондары мен қан қысымы жоғары; сыныпта сигнал/шу қатынасы ≥ +15 дБ болуы керек (ANSI S12.60), RT60 ≤ 0,6 с.
+- Шешімдер: перфорацияланған акустикалық экран −12 дБ; ғимарат экраны −10 дБ; жасыл белдеу (ені ≥15 м) −6 дБ; дыбыс жұтатын дизайн-панельдер −8 дБ; акустикалық терезелер −25…−32 дБ (іште); тыныш асфальт және жылдамдықты шектеу −2…−5 дБ; экрандық шешімдердің жиынтығы ~20–25 дБ-мен шектеледі.
+- Модель: ISO 9613-2: Leq = L0 − Adiv − Aatm − Agr − Abar; L0 = 10·lg(Q)+42; Adiv = 10·lg(d/10); Aatm = 3,7·d/1000.
+- Жауапта сайттың берілген тірі деректеріне (JSON) сілтеме жаса, нысандардың атауы мен дБ мәндерін дәл келтір. Деректе жоқ нәрсені ойдан шығарма; белгісіз болса, солай айт.
+- Медициналық диагноз қойма; денсаулыққа қатысты күдік болса, дәрігерге қаралуды ұсын.
+- Форматтау: **қалың мәтін** және «- » тізімдері ғана.`;
+
+  const GENERAL_ADDON = `
+ЖАЛПЫ РЕЖИМ ҚОСУЛЫ:
+- Сен кез келген тақырыптағы сұраққа (математика, физика, информатика, бағдарламалау, тарих, тіл, оқу, олимпиадалар және т.б.) толық әрі дұрыс жауап бересің; тек жоба тақырыбымен шектелме.
+- Пайдаланушы қай тілде жазса, сол тілде жауап бер (қазақша, орысша, ағылшынша). Әдепкі тіл — қазақ тілі.
+- Жауаптың ұзындығын сұраққа сай таңда (күрделі сұраққа толығырақ, 400 сөзге дейін). Код қажет болса, \`\`\` блогында бер.
+- Сұрақ шу, акустика, мектептер немесе балалар денсаулығына қатысты болса, жоғарыдағы білім базасы мен сайт деректерін міндетті түрде қолдан.
+- Зиянды, қауіпті немесе заңсыз әрекеттерге көмектеспе.`;
+
+  function getCfg() {
+    const defProvider = ECO_PROXY_URL ? 'proxy' : 'openai';
+    const provider = load('eco_provider', defProvider);
+    const p = PRESETS[provider] || PRESETS.openai;
+    return {
+      provider,
+      key: load('eco_key', ''),
+      model: load('eco_model_' + provider, p.model),
+      endpoint: load('eco_endpoint_' + provider, p.endpoint) || p.endpoint,
+      general: load('eco_general', true)
+    };
+  }
+  function aiEnabled() {
+    const c = getCfg();
+    if (c.provider === 'proxy') return !!c.endpoint;
+    return !!c.key && !!c.endpoint;
+  }
+  function updatePill() {
+    const c = getCfg(), on = aiEnabled(), p = $('ecoModePill');
+    p.className = 'mode-pill ' + (on ? 'mode-ai' : 'mode-local');
+    p.textContent = on ? 'СҰРАҚ-ЖАУАП · КЕҢЕЙТІЛГЕН РЕЖИМ' : 'СҰРАҚ-ЖАУАП · КІРІКТІРІЛГЕН ЛОГИКА';
+  }
+  async function aiReply(userText) {
+    const cfg = getCfg();
+    const system = SYSTEM_PROMPT + (cfg.general ? GENERAL_ADDON : '') + '\n\nСАЙТТЫҢ ТІРІ ДЕРЕКТЕРІ (JSON):\n' + JSON.stringify(siteData());
+    const convo = [
+      ...history.slice(-10).map(h => ({ role: h.role, content: h.content.replace(/<[^>]+>/g, '') })),
+      { role: 'user', content: userText }
+    ];
+    const maxTokens = cfg.general ? 1200 : 700;
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 45000);
+    try {
+      let res, out;
+      if (cfg.provider === 'anthropic') {
+        res = await fetch(cfg.endpoint, {
+          method: 'POST', signal: ctrl.signal,
+          headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+          body: JSON.stringify({ model: cfg.model, max_tokens: maxTokens, system, messages: convo })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()).slice(0, 120));
+        const j = await res.json();
+        out = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+      } else {
+        const headers = { 'Content-Type': 'application/json' };
+        if (cfg.provider !== 'proxy') headers['Authorization'] = 'Bearer ' + cfg.key;
+        const body = { messages: [{ role: 'system', content: system }, ...convo], max_tokens: maxTokens, temperature: 0.4 };
+        if (cfg.provider !== 'proxy') body.model = cfg.model;
+        res = await fetch(cfg.endpoint, { method: 'POST', signal: ctrl.signal, headers, body: JSON.stringify(body) });
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()).slice(0, 120));
+        const j = await res.json();
+        out = j.text || (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content);
+      }
+      if (!out) throw new Error('Бос жауап');
+      return { text: mdToHtml(out), actions: actionsFromText(userText + ' ' + out), source: 'AI · ' + (cfg.provider === 'proxy' ? 'өз сервер' : cfg.model) };
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('уақыт бітті');
+      throw e;
+    } finally { clearTimeout(to); }
+  }
+  function mdToHtml(s) {
+    const esc = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const blocks = [];
+    const noCode = esc.replace(/```[a-zA-Z0-9]*\n?([\s\S]*?)```/g, (m, c) => { blocks.push(c); return '\u0000CODE' + (blocks.length - 1) + '\u0000'; });
+    const lines = noCode.split('\n'); let html = '', inList = false;
+    lines.forEach(l => {
+      l = l.replace(/^#{1,6}\s+(.*)/, '**$1**');
+      const m = l.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)/);
+      if (m) { if (!inList) { html += '<ul>'; inList = true; } html += '<li>' + m[1] + '</li>'; }
+      else { if (inList) { html += '</ul>'; inList = false; } html += l.trim() ? l + '<br>' : ''; }
+    });
+    if (inList) html += '</ul>';
+    return html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>').replace(/(<br>)+$/, '')
+      .replace(/\u0000CODE(\d+)\u0000(<br>)?/g, (m, i) => '<pre style="background:#050914;border:1px solid #1e2a4d;border-radius:8px;padding:8px;overflow-x:auto;font-size:11.5px;font-family:JetBrains Mono,monospace;color:#a5f3fc;white-space:pre">' + blocks[+i] + '</pre>');
+  }
+  function actionsFromText(t) {
+    const f = findPoints(norm(t));
+    return f.slice(0, 2).map(p => ({ label: '📍 ' + p.name.slice(0, 24), fn: () => showOnMap(p) }));
+  }
+
+  /* ---------- 7. UI ---------- */
+  function renderLocalMd(s) { return s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>').replace(/<br>\s*<(ul|li|\/ul)/g, '<$1').replace(/<\/li><br>/g, '</li>').replace(/<\/ul><br>/g, '</ul>'); }
+  function time() { return new Date().toLocaleTimeString('kk-KZ', { hour: '2-digit', minute: '2-digit' }); }
+  function addMsg(role, html, actions = [], source = '') {
+    const div = document.createElement('div');
+    div.className = 'eco-msg ' + (role === 'user' ? 'eco-user' : 'eco-bot');
+    div.innerHTML = html + (role === 'bot' ? `<div class="eco-meta">${time()}${source ? `<span class="eco-src">${source}</span>` : ''}</div>` : '');
+    if (actions.length) {
+      const box = document.createElement('div'); box.className = 'eco-actions';
+      actions.forEach(a => { const b = document.createElement('button'); b.className = 'eco-act'; b.textContent = a.label; b.onclick = a.fn; box.appendChild(b); });
+      div.insertBefore(box, div.querySelector('.eco-meta'));
+    }
+    msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight;
+  }
+  function typing(on) {
+    let el = $('ecoTyping');
+    if (on && !el) { el = document.createElement('div'); el.id = 'ecoTyping'; el.className = 'eco-typing'; el.innerHTML = '<span></span><span></span><span></span>'; msgs.appendChild(el); msgs.scrollTop = msgs.scrollHeight; }
+    if (!on && el) el.remove();
+  }
+  async function ask(q) {
+    q = (q || '').trim(); if (!q || busy) return;
+    busy = true; sendBtn.disabled = true;
+    const safe = q.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    addMsg('user', safe); txt.value = ''; txt.style.height = '44px';
+    typing(true);
+    let ans;
+    if (aiEnabled()) {
+      try { ans = await aiReply(q); }
+      catch (e) { const l = localReply(q); ans = { text: l.text, actions: l.actions, source: 'жергілікті (AI қатесі: ' + e.message + ')' }; }
+    } else {
+      await new Promise(r => setTimeout(r, 450 + Math.random() * 450)); // «ойлану» эффектісі
+      const l = localReply(q); ans = { text: renderLocalMd(l.text), actions: l.actions, source: 'жергілікті смарт-логика' };
+    }
+    if (ans.source.startsWith('жергілікті (')) ans.text = renderLocalMd(ans.text);
+    typing(false);
+    addMsg('bot', ans.text, ans.actions, ans.source);
+    history.push({ role: 'user', content: q }, { role: 'assistant', content: ans.text });
+    history = history.slice(-20);
+    busy = false; sendBtn.disabled = false; txt.focus();
+  }
+
+  const CHIPS = ['РФМШ', 'Ең шулы 5 нысан', 'Қай мектептер нормадан асады?', 'Шу зейінге қалай әсер етеді?', 'ҚР шу нормалары', '72 дБ қауіпті ме?', '3000 көлік 80 м ағаштар', 'Шуды азайту шешімдері', 'Самалдағы балабақша', 'Менің өлшемім қандай?', 'Статистика', 'Микрофонды қалай калибрлеймін?', 'Ата-аналарға кеңес'];
+  CHIPS.forEach(c => { const b = document.createElement('button'); b.className = 'eco-chip'; b.textContent = c; b.onclick = () => ask(c); $('ecoChips').appendChild(b); });
+
+  function greet() {
+    msgs.innerHTML = ''; history = []; ctxPoint = null;
+    const d = siteData();
+    addMsg('bot', renderLocalMd(`Сәлеметсіз бе! Мен — **акустикалық сарапшы-кеңесшімін** 🌿
+Алматының акустикалық картасын талдап шықтым: ${POINTS.length} нысанның <span class="bad">${d.redCount}</span>-інде шу 70 дБА-дан асады, ал <span class="hl">${d.kidsOverNorm.length}</span> балалар мекемесі 55 дБА нормасынан жоғары аймақта орналасқан.
+Нысан, норма, денсаулыққа әсері немесе шешімдер туралы сұраңыз. Төмендегі дайын сұрақтарды да пайдалануға болады.`),
+      [{ label: '⚠ Қауіпті мекемелер', fn: () => ask('Қай мектептер нормадан асады?') }, { label: '🧠 Балаларға әсері', fn: () => ask('Шу зейінге қалай әсер етеді?') }], 'жүйе');
+  }
+
+  function open(v) {
+    const isOpen = v === undefined ? !chat.classList.contains('open') : v;
+    chat.classList.toggle('open', isOpen);
+    fab.querySelector('.fab-dot').style.display = 'none';
+    if (isOpen) setTimeout(() => txt.focus(), 250);
+  }
+
+  fab.addEventListener('click', () => open());
+  $('ecoClose').addEventListener('click', () => open(false));
+  $('navEco').addEventListener('click', (e) => { e.preventDefault(); open(true); });
+  $('ecoClear').addEventListener('click', greet);
+  function fillSettings(provider) {
+    const c = getCfg(), p = PRESETS[provider] || PRESETS.openai;
+    $('ecoProvider').value = provider;
+    $('ecoModel').value = load('eco_model_' + provider, p.model);
+    $('ecoEndpoint').value = load('eco_endpoint_' + provider, p.endpoint) || p.endpoint;
+    $('ecoEndpoint').placeholder = provider === 'proxy' ? 'https://eco-ai.ATYNYZ.workers.dev' : 'https://.../chat/completions';
+    $('ecoKeyWrap').style.display = p.needsKey ? '' : 'none';
+    $('ecoKey').value = c.key;
+    $('ecoGeneral').checked = c.general;
+  }
+  $('ecoGear').addEventListener('click', () => { fillSettings(getCfg().provider); $('ecoSettings').classList.toggle('show'); });
+  $('ecoProvider').addEventListener('change', (e) => fillSettings(e.target.value));
+  function saveSettings() {
+    const pr = $('ecoProvider').value;
+    store('eco_provider', pr);
+    store('eco_model_' + pr, $('ecoModel').value.trim() || PRESETS[pr].model);
+    store('eco_endpoint_' + pr, $('ecoEndpoint').value.trim() || PRESETS[pr].endpoint);
+    if (PRESETS[pr].needsKey) store('eco_key', $('ecoKey').value.trim());
+    store('eco_general', $('ecoGeneral').checked);
+    updatePill();
+  }
+  $('ecoSaveKey').addEventListener('click', () => {
+    saveSettings(); $('ecoSettings').classList.remove('show');
+    toast(aiEnabled() ? '✔ AI режимі қосылды. Қате болса, ассистент жергілікті логикаға ауысады.' : 'Кілт немесе мекенжай жоқ — жергілікті смарт-логика режимі.');
+  });
+  $('ecoTestKey').addEventListener('click', async () => {
+    saveSettings();
+    if (!aiEnabled()) { toast('Алдымен кілтті немесе прокси мекенжайын енгізіңіз.'); return; }
+    toast('⏳ Байланыс тексерілуде…');
+    try { await aiReply('Бір сөйлеммен сәлемдес.'); toast('✔ Байланыс бар! AI жұмыс істеп тұр.'); }
+    catch (e) { toast('✖ Қате: ' + e.message + '. Кілтті, модель атауын және мекенжайды тексеріңіз.'); }
+  });
+  $('ecoDelKey').addEventListener('click', () => { store('eco_key', ''); store('eco_provider', ECO_PROXY_URL ? 'proxy' : 'openai'); $('ecoKey').value = ''; updatePill(); toast('AI баптаулары өшірілді.'); });
+  sendBtn.addEventListener('click', () => ask(txt.value));
+  txt.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(txt.value); } });
+  txt.addEventListener('input', () => { txt.style.height = '44px'; txt.style.height = Math.min(txt.scrollHeight, 110) + 'px'; });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') open(false); });
+
+  updatePill(); greet();
+  return { ask, open, localReply };
+})();
+</script>
+</body>
+</html>
